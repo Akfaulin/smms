@@ -1,0 +1,170 @@
+/* ============================================================
+   master-data.css — Master Data & User Management Module Styles
+   Sistem Manajemen Media Sosial
+   ============================================================ */
+
+:root {
+    --cp-bg:        #f4f6fb;
+    --cp-white:     #fff;
+    --cp-border:    #e8edf5;
+    --cp-text:      #111827;
+    --cp-muted:     #6b7280;
+    --cp-blue:      #2d6cdf;
+    --cp-blue-l:    #eff6ff;
+    --cp-blue-m:    #dbeafe;
+    --cp-green:     #16a34a;
+    --cp-green-l:   #ecfdf5;
+    --cp-red:       #dc2626;
+    --cp-red-l:     #fef2f2;
+    --cp-sh:        0 2px 12px rgba(0,0,0,.06);
+}
+
+.ms-card {
+    background: #fff;
+    border: 1px solid var(--cp-border);
+    border-radius: 16px;
+    box-shadow: var(--cp-sh);
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.ms-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.ms-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cp-text);
+}
+
+/* Tabs */
+.ms-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid var(--cp-border);
+    margin-bottom: 24px;
+}
+
+.ms-tab {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cp-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all .2s;
+}
+
+.ms-tab:hover { color: var(--cp-text); }
+.ms-tab.active {
+    color: var(--cp-blue);
+    border-bottom-color: var(--cp-blue);
+}
+
+.ms-tab-panel { display: none; }
+.ms-tab-panel.active { display: block; }
+
+/* Tables */
+.ms-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ms-table th {
+    background: #f9fafb;
+    color: var(--cp-muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 2px solid var(--cp-border);
+}
+
+.ms-table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--cp-border);
+    font-size: 14px;
+    color: var(--cp-text);
+    vertical-align: middle;
+}
+
+.ms-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.b-role { background: var(--cp-blue-l); color: var(--cp-blue); }
+.b-aktif { background: var(--cp-green-l); color: var(--cp-green); }
+.b-nonaktif { background: var(--cp-red-l); color: var(--cp-red); }
+
+.btn-act {
+    background: none;
+    border: none;
+    color: var(--cp-blue);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+}
+.btn-act:hover { text-decoration: underline; }
+
+/* Modal */
+.ms-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.ms-modal.show {
+    display: flex;
+    opacity: 1;
+}
+
+.ms-modal-content {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%; max-width: 450px;
+    padding: 24px;
+    transform: translateY(20px);
+    transition: transform 0.2s;
+}
+
+.ms-modal.show .ms-modal-content {
+    transform: translateY(0);
+}
+
+.ms-group { margin-bottom: 16px; }
+.ms-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--cp-muted); }
+.ms-group input, .ms-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--cp-border);
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+}
+
+.ms-group input:focus, .ms-group select:focus { border-color: var(--cp-blue); }
+
+.ms-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+
+.btn-save { background: var(--cp-blue); color: #fff; padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: background .2s; }
+.btn-save:hover { background: #1e55c0; }
+.btn-cancel { background: #f3f4f6; color: #4b5563; padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: background .2s; }
+.btn-cancel:hover { background: #e5e7eb; }
