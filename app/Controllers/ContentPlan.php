@@ -160,6 +160,13 @@ class ContentPlan extends BaseController
             'created_at'  => date('Y-m-d H:i:s'),
         ]);
 
+        // Kirim notifikasi ke manager
+        $notifService = new \App\Services\NotificationService();
+        $kontenBaru   = $this->model->find($contentId);
+        if ($kontenBaru) {
+            $notifService->notifikasiTransisi($kontenBaru, '', 'ide_diajukan', $userId);
+        }
+
         return $this->jsonSukses('Ide konten berhasil diajukan.', [
             'content_id' => $contentId,
             'status'     => 'ide_diajukan',
@@ -265,8 +272,20 @@ class ContentPlan extends BaseController
         // Tahap 5: Jika status menjadi published, simpan bukti_upload
         if ($statusBaru === 'published' && !empty($linkPost)) {
             $db = \Config\Database::connect();
+
+            // Bug #4 Fix: ambil platform_id dari request, atau fallback ke platform
+            // pertama yang terdaftar di konten ini.
+            $platformId = (int) ($this->request->getPost('platform_id') ?? $json?->platform_id ?? 0);
+            if (! $platformId) {
+                $cpRow = $db->table('content_platforms')
+                    ->where('content_id', $id)
+                    ->get()->getRowArray();
+                $platformId = $cpRow ? (int) $cpRow['platform_id'] : null;
+            }
+
             $db->table('bukti_upload')->insert([
                 'content_id'     => $id,
+                'platform_id'    => $platformId ?: null,
                 'link_postingan' => $linkPost,
                 'uploaded_by'    => $userId,
                 'uploaded_at'    => date('Y-m-d H:i:s'),
@@ -358,6 +377,30 @@ class ContentPlan extends BaseController
         return $this->jsonSukses('Caption berhasil di-generate', ['caption' => $captionBaru]);
     }
 
+    /**
+     * POST /dashboard/content-plan/ai-ideas
+     * Ide konten otomatis dari AI berdasarkan topik & platform.
+     */
+    public function generateIdeas(): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $userId   = (int) session('user_id');
+        $topik    = trim((string) $this->request->getPost('topik'));
+        $platform = trim((string) $this->request->getPost('platform')) ?: 'Instagram';
+
+        if (empty($topik)) {
+            return $this->jsonGagal('Topik / Produk wajib diisi.', 422);
+        }
+
+        $ai    = new \App\Services\AiService();
+        $ide   = $ai->generateIdeas($topik, $platform, $userId);
+
+        if (strpos($ide, 'Fitur AI belum') !== false || strpos($ide, 'Gagal') !== false) {
+            return $this->jsonGagal($ide, 500);
+        }
+
+        return $this->jsonSukses('Ide berhasil di-generate', ['hasil' => $ide]);
+    }
+
     // =========================================================================
     // DELETE
     // =========================================================================
@@ -414,9 +457,9 @@ class ContentPlan extends BaseController
         ]);
     }
 
-    private function jsonGagal(string $pesan, int $code = 200): \CodeIgniter\HTTP\ResponseInterface
+    private function jsonGagal(string $pesan, int $code = 422): \CodeIgniter\HTTP\ResponseInterface
     {
-        return $this->response->setStatusCode(200)->setJSON([
+        return $this->response->setStatusCode($code)->setJSON([
             'status' => 'gagal',
             'pesan'  => $pesan,
         ]);

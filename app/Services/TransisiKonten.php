@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ContentPlanModel;
 use App\Models\ContentStatusLogModel;
+use App\Services\NotificationService;
 
 /**
  * TransisiKonten — State Machine Approval Service
@@ -77,11 +78,13 @@ class TransisiKonten
 
     private ContentPlanModel $contentPlanModel;
     private ContentStatusLogModel $statusLogModel;
+    private NotificationService $notifService;
 
     public function __construct()
     {
         $this->contentPlanModel = new ContentPlanModel();
         $this->statusLogModel   = new ContentStatusLogModel();
+        $this->notifService     = new NotificationService();
     }
 
     // -------------------------------------------------------------------------
@@ -220,14 +223,24 @@ class TransisiKonten
             }
 
             // --- FASE 9.3: AI Pre-Review Checklist ---
-            // Jika konten baru saja ditransisi ke 'review_design', 
-            // jalankan pre-review check otomatis oleh AI secara asinkron/non-blocking
-            // Di sini kita jalankan sinkron (karena ini PoC/demo).
             if ($statusBaru === 'review_design') {
                 $ai = new \App\Services\AiService();
                 $kontenUpdated = $this->contentPlanModel->find($contentId);
                 if ($kontenUpdated) {
                     $ai->preReviewCheck($kontenUpdated);
+                }
+            }
+
+            // --- Kirim Notifikasi In-App (Tahap 6) ---
+            $kontenForNotif = $this->contentPlanModel->find($contentId);
+            if ($kontenForNotif) {
+                $this->notifService->notifikasiTransisi($kontenForNotif, $statusLama, $statusBaru, $userId);
+            }
+
+            // Jika ini ide baru (status pertama), kirim notif ke manager
+            if ($statusLama === null && $statusBaru === 'ide_diajukan') {
+                if ($kontenForNotif) {
+                    $this->notifService->notifikasiTransisi($kontenForNotif, '', 'ide_diajukan', $userId);
                 }
             }
 

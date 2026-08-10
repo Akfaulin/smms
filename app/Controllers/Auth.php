@@ -78,7 +78,7 @@ class Auth extends BaseController
             'logged_in'  => true,
         ]);
 
-        return redirect()->to('/dashboard/content-plan')
+        return redirect()->to('/dashboard')
             ->with('sukses', 'Selamat datang, ' . $user['nama'] . '!');
     }
 

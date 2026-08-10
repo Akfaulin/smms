@@ -152,4 +152,24 @@ class AiService
             ]);
         }
     }
+
+    // =========================================================================
+    // FITUR 9.1: AI IDEA GENERATOR
+    // =========================================================================
+    public function generateIdeas(string $topik, string $platform, int $userId): string
+    {
+        $prompt = "Kamu adalah Strategis Konten Media Sosial berpengalaman. Tolong berikan 3 ide konten kreatif untuk platform {$platform} berdasarkan topik/produk: \"{$topik}\".\n\n";
+        $prompt .= "Untuk setiap ide, berikan:\n";
+        $prompt .= "1. Judul Konten yang Menarik\n";
+        $prompt .= "2. Konsep/Visual Ringkas\n";
+        $prompt .= "3. Call to Action (CTA)\n\n";
+        $prompt .= "Format output dengan rapi, singkat, dan mudah dipahami.";
+
+        $output = $this->callGemini($prompt);
+
+        $this->logUsage(0, $userId, 'idea_gen', $prompt, $output);
+
+        return trim($output);
+    }
 }
+

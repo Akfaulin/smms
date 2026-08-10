@@ -54,12 +54,14 @@ function getTransisiTersedia(statusNow) {
 function getFilteredData() {
     const status   = document.getElementById('filterStatus')?.value || '';
     const platform = document.getElementById('filterPlatform')?.value || '';
+    const query    = (document.getElementById('searchQuery')?.value || '').toLowerCase().trim();
     const allKonten = window.ALL_KONTEN || [];
 
     return allKonten.filter(k => {
         const matchS = !status || k.status === status;
         const matchP = !platform || (k.platforms || []).some(p => String(p.id) === platform);
-        return matchS && matchP;
+        const matchQ = !query || (k.judul_konten || '').toLowerCase().includes(query) || (k.deskripsi || '').toLowerCase().includes(query);
+        return matchS && matchP && matchQ;
     });
 }
 
@@ -563,7 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Close modals on backdrop click
-    ['backForm','backDet'].forEach(id => {
+    ['backForm','backDet','backAiIdeas'].forEach(id => {
         document.getElementById(id)?.addEventListener('click', e => {
             if (e.target.id === id) tutupModal(id);
         });
@@ -571,10 +573,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Escape key
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') ['backDet','backForm'].forEach(tutupModal);
+        if (e.key === 'Escape') ['backDet','backForm','backAiIdeas'].forEach(tutupModal);
     });
 
     buildCalendar();
     buildList();
     updateLegendCount();
 });
+
+// ─── AI Idea Generator ────────────────────────────────────
+async function generateAiIdeas() {
+    const topik    = document.getElementById('aiTopik')?.value.trim();
+    const platform = document.getElementById('aiPlatform')?.value || 'Instagram';
+
+    if (!topik) { toast('Topik / Produk wajib diisi.', 'error'); return; }
+
+    const btn = document.getElementById('btnGenIde');
+    const resBox = document.getElementById('aiIdeasResult');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin"></span> Generating Ide AI...`;
+    }
+
+    const fd = new FormData();
+    fd.append('topik', topik);
+    fd.append('platform', platform);
+
+    const res = await api('/dashboard/content-plan/ai-ideas', 'POST', fd);
+
+    if (res.status === 'sukses') {
+        toast('Saran ide AI berhasil dibuat!', 'success');
+        if (resBox) {
+            resBox.style.display = 'block';
+            resBox.textContent = res.data.hasil;
+        }
+    } else {
+        toast(res.pesan || 'Gagal generate ide.', 'error');
+    }
+
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = '✨ Generate Ide Konten';
+    }
+}

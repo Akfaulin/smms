@@ -6,8 +6,10 @@ use App\Models\UserModel;
 
 /**
  * UserManagement Controller
- * 
- * Hanya superadmin dan owner yang dapat mengakses endpoint di sini.
+ *
+ * Akses berdasarkan role (§5 permission matrix):
+ *   - superadmin : CRUD penuh, termasuk buat user dengan role apapun & hapus user
+ *   - owner      : lihat list user, update user (tidak bisa set role superadmin ke orang lain)
  */
 class UserManagement extends BaseController
 {
@@ -19,9 +21,18 @@ class UserManagement extends BaseController
     }
 
     /**
-     * Memastikan hanya superadmin / owner yang bisa akses.
+     * Cek apakah user boleh mengakses halaman user management.
+     * Superadmin dan owner boleh mengakses.
      */
     private function checkAccess(): bool
+    {
+        return in_array(session('kode_role'), ['superadmin', 'owner'], true);
+    }
+
+    /**
+     * Cek apakah user adalah superadmin (untuk operasi eksklusif superadmin).
+     */
+    private function checkSuperadminOnly(): bool
     {
         return session('kode_role') === 'superadmin';
     }
@@ -54,11 +65,12 @@ class UserManagement extends BaseController
 
     /**
      * POST /dashboard/master/user/store
+     * Hanya superadmin yang boleh membuat user baru.
      */
     public function store()
     {
-        if (! $this->checkAccess()) {
-            return $this->jsonGagal('Akses ditolak', 403);
+        if (! $this->checkSuperadminOnly()) {
+            return $this->jsonGagal('Hanya Superadmin yang dapat menambahkan user baru.', 403);
         }
 
         $json = $this->request->getJSON();
@@ -89,6 +101,8 @@ class UserManagement extends BaseController
 
     /**
      * POST /dashboard/master/user/update/{id}
+     * Superadmin dan owner boleh update user.
+     * Owner tidak boleh mengubah role menjadi 'superadmin'.
      */
     public function update(int $id)
     {
@@ -101,15 +115,26 @@ class UserManagement extends BaseController
             return $this->jsonGagal('User tidak ditemukan', 404);
         }
 
-        $json = $this->request->getJSON();
+        $json    = $this->request->getJSON();
+        $roleId  = $this->request->getPost('role_id') ?? ($json->role_id ?? '');
+
+        // Owner tidak boleh assign role superadmin ke user lain
+        if (! $this->checkSuperadminOnly() && ! empty($roleId)) {
+            $db       = \Config\Database::connect();
+            $roleRow  = $db->table('roles')->where('id', (int) $roleId)->get()->getRowArray();
+            if ($roleRow && $roleRow['kode_role'] === 'superadmin') {
+                return $this->jsonGagal('Owner tidak dapat mengubah role menjadi Superadmin.', 403);
+            }
+        }
+
         $data = [
-            'nama'    => $this->request->getPost('nama') ?? $json->nama ?? '',
-            'email'   => $this->request->getPost('email') ?? $json->email ?? '',
-            'role_id' => $this->request->getPost('role_id') ?? $json->role_id ?? '',
-            'status'  => $this->request->getPost('status') ?? $json->status ?? 'aktif',
+            'nama'    => $this->request->getPost('nama') ?? ($json->nama ?? ''),
+            'email'   => $this->request->getPost('email') ?? ($json->email ?? ''),
+            'role_id' => $roleId,
+            'status'  => $this->request->getPost('status') ?? ($json->status ?? 'aktif'),
         ];
 
-        $password = $this->request->getPost('password') ?? $json->password ?? '';
+        $password = $this->request->getPost('password') ?? ($json->password ?? '');
         if (! empty($password)) {
             $data['password'] = password_hash((string) $password, PASSWORD_BCRYPT);
         }
@@ -123,11 +148,12 @@ class UserManagement extends BaseController
 
     /**
      * POST /dashboard/master/user/delete/{id}
+     * Hanya superadmin yang boleh menghapus user.
      */
     public function delete(int $id)
     {
-        if (! $this->checkAccess()) {
-            return $this->jsonGagal('Akses ditolak', 403);
+        if (! $this->checkSuperadminOnly()) {
+            return $this->jsonGagal('Hanya Superadmin yang dapat menghapus user.', 403);
         }
 
         $user = $this->model->find($id);

@@ -14,10 +14,28 @@ $routes->get('logout', 'Auth::logout');
 
 
 // ============================================================
-// Dashboard — Content Plan
-// Sesuai spesifikasi endpoint §6
+// Dashboard — Beranda
 // ============================================================
 $routes->group('dashboard', function (RouteCollection $routes) {
+
+    // Beranda
+    $routes->get('', 'Dashboard::index');
+    $routes->get('/', 'Dashboard::index');
+
+    // Profil
+    $routes->get('profil', 'Profile::index');
+    $routes->post('profil/update', 'Profile::updateProfile');
+    $routes->post('profil/ganti-password', 'Profile::gantiPassword');
+
+    // Notifikasi
+    $routes->get('notifikasi/unread-count', 'Notifications::unreadCount');
+    $routes->get('notifikasi/list', 'Notifications::list');
+    $routes->post('notifikasi/baca/(:num)', 'Notifications::baca/$1');
+    $routes->post('notifikasi/baca-semua', 'Notifications::bacaSemua');
+
+    // Laporan
+    $routes->get('laporan', 'Laporan::index');
+    $routes->get('laporan/export', 'Laporan::export');
 
     // ----------------------------------------------------------
     // Content Plan
@@ -32,6 +50,7 @@ $routes->group('dashboard', function (RouteCollection $routes) {
 
     // Endpoint AI (Tahap 9)
     $routes->post('content-plan/ai-caption/(:num)', 'ContentPlan::generateCaption/$1');
+    $routes->post('content-plan/ai-ideas', 'ContentPlan::generateIdeas');
 
     // Riwayat status & catatan (untuk timeline modal — Tahap 3)
     $routes->get('content-plan/(:num)/log', 'ContentPlan::log/$1');

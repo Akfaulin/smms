@@ -1,0 +1,187 @@
+﻿/* ============================================================
+   profile.css — Halaman Profil User
+   ============================================================ */
+
+.pf-wrap { max-width: 900px; }
+
+/* ── Header Avatar ──────────────────────────────────────────── */
+.pf-header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 32px;
+    padding: 24px;
+    background: var(--surface, #1a1f2e);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-radius: 16px;
+}
+
+.pf-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 26px;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+}
+
+.pf-name {
+    font-size: 20px; font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    margin: 0 0 6px;
+}
+
+.pf-role-badge {
+    display: inline-flex;
+    padding: 3px 10px;
+    background: rgba(99,102,241,.15);
+    color: #818cf8;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.pf-email {
+    font-size: 13px;
+    color: var(--text-muted, #94a3b8);
+    margin: 4px 0 0;
+}
+
+/* ── Grid Layout ────────────────────────────────────────────── */
+.pf-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) { .pf-grid { grid-template-columns: 1fr; } }
+
+/* ── Card ───────────────────────────────────────────────────── */
+.pf-card {
+    background: var(--surface, #1a1f2e);
+    border: 1px solid var(--border, rgba(255,255,255,0.07));
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.pf-card-header {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--border, rgba(255,255,255,0.07));
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary, #f1f5f9);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.pf-card-header svg { color: #6366f1; }
+
+.pf-card-body { padding: 20px; }
+
+/* ── Form Elements ──────────────────────────────────────────── */
+.pf-form-group { margin-bottom: 16px; }
+.pf-form-group:last-of-type { margin-bottom: 20px; }
+
+.pf-label {
+    display: block;
+    font-size: 12px; font-weight: 600;
+    color: var(--text-muted, #94a3b8);
+    margin-bottom: 7px;
+    text-transform: uppercase; letter-spacing: .4px;
+}
+
+.pf-input {
+    width: 100%; box-sizing: border-box;
+    padding: 10px 13px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: var(--text-primary, #f1f5f9);
+    font-size: 13px;
+    font-family: inherit;
+    transition: border-color .2s, box-shadow .2s;
+    outline: none;
+}
+
+.pf-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+.pf-hint {
+    font-size: 11px;
+    color: var(--text-muted, #94a3b8);
+    margin: 6px 0 0;
+    line-height: 1.5;
+}
+
+/* Password wrap */
+.pf-pass-wrap { position: relative; }
+
+.pf-pass-wrap .pf-input { padding-right: 42px; }
+
+.pf-eye {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted, #94a3b8);
+    padding: 4px; opacity: .6;
+    transition: opacity .2s;
+}
+.pf-eye:hover { opacity: 1; }
+
+/* Strength indicator */
+.pf-pass-strength {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.pf-strength-bar {
+    height: 4px; border-radius: 99px;
+    background: #ef4444;
+    flex: 1; transition: width .3s, background .3s;
+}
+
+#strengthLabel {
+    font-size: 11px; font-weight: 700;
+    white-space: nowrap;
+}
+
+/* ── Buttons ────────────────────────────────────────────────── */
+.pf-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 20px;
+    background: #6366f1;
+    color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .2s, transform .15s, opacity .2s;
+    width: 100%; justify-content: center;
+}
+
+.pf-btn:hover:not(:disabled) { background: #4f46e5; transform: translateY(-1px); }
+.pf-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.pf-btn-danger { background: #ef4444; }
+.pf-btn-danger:hover:not(:disabled) { background: #dc2626; }
+
+/* Loading spinner */
+.pf-spin {
+    display: inline-block;
+    width: 13px; height: 13px;
+    border: 2px solid rgba(255,255,255,.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

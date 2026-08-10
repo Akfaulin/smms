@@ -3,7 +3,7 @@
 <!-- ═══════════════════════════════════════════════════════ -->
 <aside class="sidebar">
     <div class="sidebar-brand">
-        <a href="/dashboard/content-plan" class="brand-wrap">
+        <a href="/dashboard" class="brand-wrap">
             <div class="brand-icon">
                 <svg viewBox="0 0 24 24"><path d="M17 2H7C4.2 2 2 4.2 2 7v10c0 2.8 2.2 5 5 5h10c2.8 0 5-2.2 5-5V7c0-2.8-2.2-5-5-5zm1 12c0 .6-.4 1-1 1h-2v2c0 .6-.4 1-1 1s-1-.4-1-1v-2h-2c-.6 0-1-.4-1-1s.4-1 1-1h2v-2c0-.6.4-1 1-1s1 .4 1 1v2h2c.6 0 1 .4 1 1zM8 9c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1zm4 0c-.6 0-1-.4-1-1s.4-1 1-1 1 .4 1 1-.4 1-1 1z"/></svg>
             </div>
@@ -17,6 +17,14 @@
     <nav class="sidebar-nav">
         <div class="nav-section-label">Menu</div>
 
+        <a href="/dashboard" class="nav-item <?= (current_url() === base_url('dashboard') || current_url() === base_url('dashboard/')) ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+            </svg>
+            Dashboard
+        </a>
+
         <a href="/dashboard/content-plan" class="nav-item <?= str_contains(current_url(), 'content-plan') ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -27,6 +35,16 @@
         </a>
 
         <?php $role = session('kode_role'); ?>
+        <?php if (in_array($role, ['superadmin', 'owner', 'manager'], true)): ?>
+        <a href="/dashboard/laporan" class="nav-item <?= str_contains(current_url(), 'laporan') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            Laporan
+        </a>
+        <?php endif; ?>
+
         <?php if (in_array($role, ['superadmin', 'owner'], true)): ?>
         <div class="nav-section-label" style="margin-top:14px">Master Data</div>
         
@@ -50,7 +68,7 @@
     </nav>
 
     <div class="sidebar-user">
-        <div class="user-card">
+        <a href="/dashboard/profil" class="user-card" style="text-decoration:none;display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;transition:background .18s;" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background=''">
             <div class="user-avatar">
                 <?= strtoupper(substr(session('nama') ?? 'U', 0, 2)) ?>
             </div>
@@ -58,7 +76,7 @@
                 <div class="user-name-text"><?= esc(session('nama')) ?></div>
                 <div class="user-role-text"><?= esc(session('nama_role')) ?></div>
             </div>
-        </div>
+        </a>
         <a href="/logout">
             <button class="btn-logout">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

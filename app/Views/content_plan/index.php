@@ -76,6 +76,9 @@ $roleNow   = $kode_role ?? session('kode_role');
                 <a href="?view=all" class="cp-tog <?= ($viewMode === 'all') ? 'active' : '' ?>">Semua</a>
             </div>
 
+            <!-- Search Box -->
+            <input type="text" id="searchQuery" class="cp-inp" style="width:160px;padding:6px 10px;font-size:12px" placeholder="🔍 Cari konten..." oninput="renderView()">
+
             <select class="cp-sel" id="filterStatus" onchange="renderView()">
                 <option value="">Semua Status</option>
                 <option value="ide_diajukan">Ide Diajukan</option>
@@ -102,6 +105,9 @@ $roleNow   = $kode_role ?? session('kode_role');
                 </button>
             </div>
             <?php if ($bolehBuat): ?>
+            <button class="cpb cpb-sec" onclick="bukaModal('backAiIdeas')" style="background:var(--cp-purple-l);color:var(--cp-purple);border:1px solid var(--cp-purple-l)">
+                🤖 Ide AI
+            </button>
             <button class="cpb cpb-pri" onclick="bukaFormTambah()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:3px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Ajukan Ide
             </button>
@@ -340,6 +346,49 @@ $roleNow   = $kode_role ?? session('kode_role');
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!-- MODAL: AI Idea Generator                                  -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="cp-back" id="backAiIdeas">
+    <div class="cp-modal modal-md">
+        <div class="cp-mh">
+            <div>
+                <div class="cp-mt">🤖 AI Idea Generator</div>
+                <div class="cp-ms">Generate 3 saran ide konten otomatis dengan AI</div>
+            </div>
+            <button class="cp-mcls" onclick="tutupModal('backAiIdeas')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="cp-mb">
+            <div class="cp-row">
+                <div class="cp-field">
+                    <label>Topik / Produk / Promo <span style="color:#dc2626">*</span></label>
+                    <input type="text" id="aiTopik" class="cp-inp" placeholder="Contoh: Diskon Kemerdekaan 17 Agustus">
+                </div>
+                <div class="cp-field">
+                    <label>Platform Target</label>
+                    <select id="aiPlatform" class="cp-inp">
+                        <option value="Instagram">Instagram</option>
+                        <option value="TikTok">TikTok</option>
+                        <option value="Facebook">Facebook</option>
+                        <option value="LinkedIn">LinkedIn</option>
+                    </select>
+                </div>
+            </div>
+            <div class="cp-row full">
+                <button class="cpb cpb-pri" id="btnGenIde" style="width:100%;margin-top:8px" onclick="generateAiIdeas()">
+                    ✨ Generate Ide Konten
+                </button>
+            </div>
+            <div id="aiIdeasResult" style="margin-top:16px;display:none;background:var(--cp-purple-l);border:1px solid var(--cp-purple);border-radius:10px;padding:16px;font-size:13px;white-space:pre-wrap;color:var(--cp-text)">
+            </div>
+        </div>
     </div>
 </div>
 

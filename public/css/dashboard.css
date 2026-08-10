@@ -1,0 +1,308 @@
+﻿/* ============================================================
+   dashboard.css — Dashboard Beranda Styles (Light Theme)
+   Sistem Manajemen Media Sosial
+   ============================================================ */
+
+:root {
+    --db-accent: #2d6cdf;
+    --db-accent-l: #eff6ff;
+    --db-surface: #ffffff;
+    --db-border: #e8edf5;
+    --db-text: #111827;
+    --db-text2: #374151;
+    --db-muted: #6b7280;
+    --db-sub: #9ca3af;
+    --db-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Welcome Strip ──────────────────────────────────────────── */
+.db-welcome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: #ffffff;
+    border: 1px solid var(--db-border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    box-shadow: var(--db-shadow);
+}
+
+.db-welcome-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--db-text);
+    margin: 0 0 4px;
+    letter-spacing: -.3px;
+}
+
+.db-welcome-sub {
+    font-size: 13px;
+    color: var(--db-muted);
+    margin: 0;
+    font-weight: 500;
+}
+
+.db-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--db-accent);
+    color: #ffffff;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 4px 12px rgba(45, 108, 223, 0.25);
+}
+
+.db-btn-primary:hover {
+    background: #1e54c3;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(45, 108, 223, 0.35);
+}
+
+/* ── Stat Cards ─────────────────────────────────────────────── */
+.db-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) { .db-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .db-stats { grid-template-columns: 1fr; } }
+
+.db-stat-card {
+    background: #ffffff;
+    border: 1px solid var(--db-border);
+    border-radius: 14px;
+    padding: 20px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--db-shadow);
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+
+.db-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+}
+
+.db-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3.5px;
+    border-radius: 14px 14px 0 0;
+}
+
+.db-stat-card.blue::before   { background: #2d6cdf; }
+.db-stat-card.green::before  { background: #16a34a; }
+.db-stat-card.orange::before { background: #d97706; }
+.db-stat-card.red::before    { background: #dc2626; }
+
+.db-stat-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+
+.db-stat-card.blue   .db-stat-icon { background: #eff6ff; color: #2d6cdf; }
+.db-stat-card.green  .db-stat-icon { background: #f0fdf4; color: #16a34a; }
+.db-stat-card.orange .db-stat-icon { background: #fffbeb; color: #d97706; }
+.db-stat-card.red    .db-stat-icon { background: #fef2f2; color: #dc2626; }
+
+.db-stat-icon svg { width: 22px; height: 22px; }
+
+.db-stat-info { flex: 1; }
+.db-stat-num  { font-size: 28px; font-weight: 800; color: var(--db-text); line-height: 1; margin-bottom: 4px; letter-spacing: -.5px; }
+.db-stat-lbl  { font-size: 11px; font-weight: 700; color: var(--db-muted); text-transform: uppercase; letter-spacing: .5px; }
+.db-stat-sub  {
+    position: absolute; bottom: 14px; right: 14px;
+    font-size: 10px; font-weight: 600; color: var(--db-muted);
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 2px 8px; border-radius: 20px;
+}
+
+/* ── Main Grid ──────────────────────────────────────────────── */
+.db-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 900px) { .db-grid { grid-template-columns: 1fr; } }
+
+.db-side { display: flex; flex-direction: column; gap: 20px; }
+
+/* ── Card ───────────────────────────────────────────────────── */
+.db-card {
+    background: #ffffff;
+    border: 1px solid var(--db-border);
+    border-radius: 14px;
+    box-shadow: var(--db-shadow);
+    overflow: hidden;
+}
+
+.db-card-chart { margin-bottom: 0; }
+
+.db-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid var(--db-border);
+    background: #ffffff;
+}
+
+.db-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--db-text);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.db-card-title svg { color: var(--db-accent); }
+
+.db-link-all {
+    font-size: 12px;
+    color: var(--db-accent);
+    text-decoration: none;
+    font-weight: 700;
+    transition: color .2s;
+}
+.db-link-all:hover { color: #1e54c3; text-decoration: underline; }
+
+.db-card-body { padding: 20px; }
+
+/* ── Queue List ─────────────────────────────────────────────── */
+.db-queue-list { display: flex; flex-direction: column; gap: 10px; }
+
+.db-queue-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--db-border);
+    background: #f8fafc;
+    text-decoration: none;
+    transition: background .18s, border-color .18s, transform .15s;
+    gap: 12px;
+}
+
+.db-queue-item:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    transform: translateX(2px);
+}
+
+.db-queue-info { flex: 1; min-width: 0; }
+.db-queue-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--db-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 3px;
+}
+.db-queue-meta { font-size: 11px; color: var(--db-muted); font-weight: 500; }
+
+/* Badges */
+.db-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.db-badge.published { background: #dcfce7; color: #15803d; }
+.db-badge.ditolak   { background: #f3f4f6; color: #4b5563; }
+.db-badge.draft     { background: #fee2e2; color: #b91c1c; }
+.db-badge.acc       { background: #eff6ff; color: #1d4ed8; }
+
+/* ── Empty ──────────────────────────────────────────────────── */
+.db-empty {
+    text-align: center;
+    padding: 36px 16px;
+    color: var(--db-muted);
+}
+.db-empty svg { margin-bottom: 12px; opacity: .5; color: var(--db-muted); }
+.db-empty p   { font-size: 13px; margin: 0; font-weight: 500; }
+
+/* ── Soon Alert ─────────────────────────────────────────────── */
+.db-card-soon { border-color: #fde68a; background: #fffdf5; }
+
+.db-soon-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #fef3c7;
+}
+.db-soon-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+.db-soon-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #d97706;
+    margin-top: 5px;
+    flex-shrink: 0;
+}
+
+.db-soon-title {
+    font-size: 13px; font-weight: 700; color: var(--db-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 240px;
+}
+.db-soon-date { font-size: 11px; color: #b45309; margin-top: 2px; font-weight: 600; }
+
+/* ── Distribution Bar ───────────────────────────────────────── */
+.db-dist-item { margin-bottom: 14px; }
+.db-dist-item:last-child { margin-bottom: 0; }
+
+.db-dist-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--db-text2);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.db-dist-num { font-weight: 700; color: var(--db-text); }
+
+.db-dist-bar-wrap {
+    height: 7px;
+    background: #f1f5f9;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.db-dist-bar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .6s ease;
+    min-width: 4px;
+}
+
+/* ── Chart ──────────────────────────────────────────────────── */
+.db-chart-wrap { position: relative; }
