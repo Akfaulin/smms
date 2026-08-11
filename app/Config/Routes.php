@@ -49,6 +49,8 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->post('asset-library/store', 'AssetLibrary::store');
     $routes->post('asset-library/delete/(:num)', 'AssetLibrary::delete/$1');
     $routes->get('approval-manager', 'ApprovalManager::index');
+    $routes->post('approval-manager/ai-review/(:num)', 'ApprovalManager::aiReview/$1');
+    $routes->post('approval-manager/ai-caption/(:num)', 'ApprovalManager::aiCaption/$1');
     $routes->get('jadwal-upload', 'JadwalUpload::index');
     $routes->get('kalender-tayang', 'KalenderTayang::index');
 

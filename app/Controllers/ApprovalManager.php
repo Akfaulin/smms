@@ -87,4 +87,88 @@ class ApprovalManager extends BaseController
             'kode_role'         => $role,
         ]);
     }
+
+    /**
+     * POST /dashboard/approval-manager/ai-review/{id}
+     * Menjalankan evaluasi AI & analisis kualitas konten/video khusus Manager.
+     */
+    public function aiReview(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role = session('kode_role');
+        if (! in_array($role, ['manager', 'superadmin', 'owner'], true)) {
+            return $this->response->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Akses ditolak. Fitur AI Review ini khusus untuk Manager.',
+            ])->setStatusCode(403);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ])->setStatusCode(404);
+        }
+
+        try {
+            $aiService = new \App\Services\AiService();
+            $aiService->preReviewCheck($konten);
+
+            return $this->response->setJSON([
+                'status' => 'sukses',
+                'pesan'  => 'Analisis AI Review berhasil dijalankan! Hasil evaluasi dapat dilihat pada timeline/log status.',
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Terjadi kesalahan saat memproses AI: ' . $e->getMessage(),
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * POST /dashboard/approval-manager/ai-caption/{id}
+     * Minta saran perbaikan/generasi caption AI khusus Manager.
+     */
+    public function aiCaption(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role = session('kode_role');
+        if (! in_array($role, ['manager', 'superadmin', 'owner'], true)) {
+            return $this->response->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Akses ditolak.',
+            ])->setStatusCode(403);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ])->setStatusCode(404);
+        }
+
+        $userId   = (int) session('user_id');
+        $judul    = $konten['judul_konten'];
+        $brief    = $konten['deskripsi'] ?? '';
+        $platform = 'Instagram & TikTok';
+
+        try {
+            $aiService    = new \App\Services\AiService();
+            $saranCaption = $aiService->generateCaption($id, $judul, $platform, $brief, $userId);
+
+            return $this->response->setJSON([
+                'status' => 'sukses',
+                'data'   => [
+                    'caption' => $saranCaption,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Gagal memuat saran AI: ' . $e->getMessage(),
+            ])->setStatusCode(500);
+        }
+    }
 }
+

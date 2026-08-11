@@ -386,7 +386,7 @@ $roleNow   = $kode_role ?? session('kode_role');
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generate Ide Konten
                 </button>
             </div>
-            <div id="aiIdeasResult" style="margin-top:16px;display:none;background:var(--cp-purple-l);border:1px solid var(--cp-purple);border-radius:10px;padding:16px;font-size:13px;white-space:pre-wrap;color:var(--cp-text)">
+            <div id="aiIdeasResult" style="margin-top:16px;display:none;background:var(--cp-purple-l);border:1px solid var(--cp-purple);border-radius:10px;padding:16px;font-size:13px;white-space:pre-wrap;color:var(--cp-text);max-height:400px;overflow-y:auto;">
             </div>
         </div>
     </div>

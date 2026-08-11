@@ -32,7 +32,7 @@ class AiService
             return "Fitur AI belum dikonfigurasi. Mohon isi GEMINI_API_KEY di file .env.";
         }
 
-        $url = '/v1beta/models/gemini-1.5-flash:generateContent?key=' . $this->apiKey;
+        $url = '/v1beta/models/gemini-flash-latest:generateContent?key=' . $this->apiKey;
 
         $payload = [
             'contents' => [
@@ -44,7 +44,7 @@ class AiService
             ],
             'generationConfig' => [
                 'temperature' => 0.7,
-                'maxOutputTokens' => 800,
+                'maxOutputTokens' => 2048,
             ]
         ];
 
@@ -76,11 +76,11 @@ class AiService
     /**
      * Log penggunaan AI
      */
-    protected function logUsage(int $contentId, int $userId, string $fitur, string $prompt, string $output)
+    protected function logUsage(?int $contentId, ?int $userId, string $fitur, string $prompt, string $output)
     {
         $this->logModel->insert([
-            'content_id'   => $contentId,
-            'user_id'      => $userId,
+            'content_id'   => ($contentId && $contentId > 0) ? $contentId : null,
+            'user_id'      => ($userId && $userId > 0) ? $userId : null,
             'fitur'        => $fitur,
             'prompt_input' => $prompt,
             'output'       => $output,
@@ -167,7 +167,7 @@ class AiService
 
         $output = $this->callGemini($prompt);
 
-        $this->logUsage(0, $userId, 'idea_gen', $prompt, $output);
+        $this->logUsage(null, $userId, 'idea_gen', $prompt, $output);
 
         return trim($output);
     }

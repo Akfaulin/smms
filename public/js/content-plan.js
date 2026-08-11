@@ -647,6 +647,38 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── AI Idea Generator ────────────────────────────────────
+function renderMarkdown(txt) {
+    if (!txt) return '';
+
+    let html = txt
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    // Headings (### Header)
+    html = html.replace(/^### (.*$)/gim, '<h4 style="font-weight:700;font-size:15px;margin:12px 0 6px 0;color:#6d28d9;border-bottom:1px solid #e9d5ff;padding-bottom:4px;">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 style="font-weight:700;font-size:16px;margin:14px 0 6px 0;color:#6d28d9;">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 style="font-weight:700;font-size:18px;margin:16px 0 8px 0;color:#6d28d9;">$1</h2>');
+
+    // Horizontal Rule (---)
+    html = html.replace(/^---$/gim, '<hr style="border:0;border-top:1px solid #cbd5e1;margin:12px 0;">');
+
+    // Bold (**text** or __text__)
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight:700;color:#0f172a;">$1</strong>');
+    html = html.replace(/__(.*?)__/g, '<strong style="font-weight:700;color:#0f172a;">$1</strong>');
+
+    // Italic (*text*)
+    html = html.replace(/\*([^\*]+)\*/g, '<em style="font-style:italic;color:#475569;">$1</em>');
+
+    // Line breaks
+    html = html.replace(/\n/g, '<br>');
+
+    // Clean extra breaks after block elements
+    html = html.replace(/(<\/h[234]>|<hr>)\s*<br>/g, '$1');
+
+    return html;
+}
+
 async function generateAiIdeas() {
     const topik    = document.getElementById('aiTopik')?.value.trim();
     const platform = document.getElementById('aiPlatform')?.value || 'Instagram';
@@ -671,7 +703,7 @@ async function generateAiIdeas() {
         toast('Saran ide AI berhasil dibuat!', 'success');
         if (resBox) {
             resBox.style.display = 'block';
-            resBox.textContent = res.data.hasil;
+            resBox.innerHTML = renderMarkdown(res.data.hasil);
         }
     } else {
         toast(res.pesan || 'Gagal generate ide.', 'error');
@@ -682,3 +714,4 @@ async function generateAiIdeas() {
         btn.textContent = '✨ Generate Ide Konten';
     }
 }
+
