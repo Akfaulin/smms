@@ -75,70 +75,70 @@ class NotificationService
             case 'acc_ide':
                 // Notify pembuat konten: ide disetujui
                 if ($dibuatOleh && $dibuatOleh !== $doerId) {
-                    $this->kirim($dibuatOleh, '✅ Ide Disetujui', "Ide konten \"{$judul}\" telah disetujui oleh Manager.", $url);
+                    $this->kirim($dibuatOleh, 'Ide Disetujui', "Ide konten \"{$judul}\" telah disetujui oleh Manager.", $url);
                 }
                 // Notify assigned designer (jika ada)
                 if ($designer && $designer !== $doerId && $designer !== $dibuatOleh) {
-                    $this->kirim($designer, '📋 Tugas Baru Untukmu', "Kamu ditugaskan mengerjakan desain untuk konten \"{$judul}\".", $url);
+                    $this->kirim($designer, 'Tugas Baru Untukmu', "Kamu ditugaskan mengerjakan desain untuk konten \"{$judul}\".", $url);
                 }
                 break;
 
             case 'revisi':
                 // Notify pembuat/designer: perlu revisi
                 if ($dibuatOleh && $dibuatOleh !== $doerId) {
-                    $this->kirim($dibuatOleh, '🔄 Perlu Revisi', "Konten \"{$judul}\" diminta untuk direvisi.", $url);
+                    $this->kirim($dibuatOleh, 'Perlu Revisi', "Konten \"{$judul}\" diminta untuk direvisi.", $url);
                 }
                 if ($designer && $designer !== $doerId && $designer !== $dibuatOleh) {
-                    $this->kirim($designer, '🔄 Perlu Revisi', "Konten \"{$judul}\" yang kamu kerjakan perlu direvisi.", $url);
+                    $this->kirim($designer, 'Perlu Revisi', "Konten \"{$judul}\" yang kamu kerjakan perlu direvisi.", $url);
                 }
                 break;
 
             case 'ditolak':
                 // Notify pembuat konten: ide ditolak
                 if ($dibuatOleh && $dibuatOleh !== $doerId) {
-                    $this->kirim($dibuatOleh, '❌ Ide Ditolak', "Ide konten \"{$judul}\" tidak dapat dilanjutkan.", $url);
+                    $this->kirim($dibuatOleh, 'Ide Ditolak', "Ide konten \"{$judul}\" tidak dapat dilanjutkan.", $url);
                 }
                 break;
 
             case 'in_design':
                 // Notify manager bahwa content creator mulai mengerjakan
-                $this->kirimKeRole('manager', '🎨 Konten Mulai Dikerjakan', "Konten \"{$judul}\" sedang dalam proses desain.", $url);
+                $this->kirimKeRole('manager', 'Konten Mulai Dikerjakan', "Konten \"{$judul}\" sedang dalam proses desain.", $url);
                 break;
 
             case 'review_design':
                 // Notify semua manager: ada yang perlu direview
-                $this->kirimKeRole('manager', '👀 Review Dibutuhkan', "Konten \"{$judul}\" selesai didesain dan menunggu review Anda.", $url);
+                $this->kirimKeRole('manager', 'Review Dibutuhkan', "Konten \"{$judul}\" selesai didesain dan menunggu review Anda.", $url);
                 break;
 
             case 'acc_final':
                 // Notify uploader/admin_medsos
                 if ($uploader && $uploader !== $doerId) {
-                    $this->kirim($uploader, '🚀 Siap Dipublish', "Konten \"{$judul}\" telah di-approve dan siap untuk diupload.", $url);
+                    $this->kirim($uploader, 'Siap Dipublish', "Konten \"{$judul}\" telah di-approve dan siap untuk diupload.", $url);
                 } else {
                     // Notify semua admin_medsos jika belum ada uploader
-                    $this->kirimKeRole('admin_medsos', '🚀 Konten Siap Dipublish', "Konten \"{$judul}\" telah di-approve dan siap untuk diupload.", $url);
+                    $this->kirimKeRole('admin_medsos', 'Konten Siap Dipublish', "Konten \"{$judul}\" telah di-approve dan siap untuk diupload.", $url);
                 }
                 // Notify pembuat konten
                 if ($dibuatOleh && $dibuatOleh !== $doerId) {
-                    $this->kirim($dibuatOleh, '🎉 Konten Acc Final!', "Konten \"{$judul}\" telah mendapat persetujuan final!", $url);
+                    $this->kirim($dibuatOleh, 'Konten Acc Final!', "Konten \"{$judul}\" telah mendapat persetujuan final!", $url);
                 }
                 break;
 
             case 'published':
                 // Notify pembuat konten & semua manager
                 if ($dibuatOleh && $dibuatOleh !== $doerId) {
-                    $this->kirim($dibuatOleh, '🌟 Konten Published!', "Konten \"{$judul}\" telah berhasil dipublish!", $url);
+                    $this->kirim($dibuatOleh, 'Konten Published!', "Konten \"{$judul}\" telah berhasil dipublish!", $url);
                 }
-                $this->kirimKeRole('owner', '📢 Konten Published', "Konten \"{$judul}\" berhasil dipublish.", $url);
+                $this->kirimKeRole('owner', 'Konten Published', "Konten \"{$judul}\" berhasil dipublish.", $url);
                 break;
 
             case 'ide_diajukan':
                 // Saat creator resubmit setelah revisi — notify manager
                 if ($statusLama === 'revisi') {
-                    $this->kirimKeRole('manager', '📥 Ide Diajukan Ulang', "Konten \"{$judul}\" telah direvisi dan diajukan ulang.", $url);
+                    $this->kirimKeRole('manager', 'Ide Diajukan Ulang', "Konten \"{$judul}\" telah direvisi dan diajukan ulang.", $url);
                 } else {
                     // Ide baru — notify semua manager
-                    $this->kirimKeRole('manager', '💡 Ide Konten Baru', "Ada ide konten baru yang menunggu review Anda: \"{$judul}\".", $url);
+                    $this->kirimKeRole('manager', 'Ide Konten Baru', "Ada ide konten baru yang menunggu review Anda: \"{$judul}\".", $url);
                 }
                 break;
         }

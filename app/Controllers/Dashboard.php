@@ -7,7 +7,7 @@ use App\Services\TransisiKonten;
 /**
  * Dashboard Controller
  *
- * Halaman beranda setelah login — menampilkan statistik, antrean tugas,
+ * Halaman beranda setelah login â€” menampilkan statistik, antrean tugas,
  * dan tren konten sesuai role pengguna.
  */
 class Dashboard extends BaseController
@@ -38,6 +38,15 @@ class Dashboard extends BaseController
                 ->select('cp.id, cp.judul_konten, cp.status, cp.tanggal_publish, u.nama as nama_pembuat')
                 ->join('users u', 'u.id = cp.dibuat_oleh', 'left')
                 ->whereIn('cp.status', ['ide_diajukan', 'review_design'])
+                ->orderBy('cp.updated_at', 'ASC')
+                ->limit(8)
+                ->get()->getResultArray();
+        } elseif ($role === 'creative_team') {
+            $antrean = $db->table('content_plan cp')
+                ->select('cp.id, cp.judul_konten, cp.status, cp.tanggal_publish, u.nama as nama_pembuat')
+                ->join('users u', 'u.id = cp.dibuat_oleh', 'left')
+                ->whereIn('cp.status', ['ide_diajukan', 'revisi'])
+                ->where('cp.dibuat_oleh', $userId)
                 ->orderBy('cp.updated_at', 'ASC')
                 ->limit(8)
                 ->get()->getResultArray();
@@ -77,7 +86,7 @@ class Dashboard extends BaseController
             ->orderBy('cp.tanggal_publish', 'ASC')
             ->get()->getResultArray();
 
-        // --- Data Tren: 7 Hari Terakhir ---
+        // --- Data Tren 7 Hari Terakhir ---
         $tren = [];
         for ($i = 6; $i >= 0; $i--) {
             $tgl    = date('Y-m-d', strtotime("-{$i} days"));

@@ -32,7 +32,7 @@ function statusClass(s) {
 // Transisi valid per status & role
 const TRANSISI_MAP = {
     ide_diajukan: { manager: ['acc_ide','revisi','ditolak'] },
-    revisi:        { content_creator: ['ide_diajukan'] },
+    revisi:        { creative_team: ['ide_diajukan'], content_creator: ['ide_diajukan'] },
     acc_ide:       { content_creator: ['in_design'] },
     in_design:     { content_creator: ['review_design'] },
     review_design: { manager: ['acc_final','revisi'] },
@@ -232,8 +232,6 @@ function bukaFormTambah(tanggal = '') {
     if (fDesc)     fDesc.value     = '';
     if (fJenis)    fJenis.value    = '';
     if (fPillar)   fPillar.value   = '';
-    if (fDesigner) fDesigner.value = '';
-    if (fUploader) fUploader.value = '';
     if (fTanggal)  fTanggal.value  = tanggal;
 
     // Uncheck all platforms
@@ -263,8 +261,6 @@ async function simpanIde() {
     fd.append('tanggal_publish',   document.getElementById('fTanggal').value);
     fd.append('jenis_konten_id',   document.getElementById('fJenis').value);
     fd.append('content_type_id',   document.getElementById('fPillar').value);
-    fd.append('assigned_designer', document.getElementById('fDesigner').value);
-    fd.append('assigned_uploader', document.getElementById('fUploader').value);
 
     document.querySelectorAll('.plat-cb:checked').forEach(cb => fd.append('platforms[]', cb.value));
 
@@ -356,10 +352,19 @@ async function bukaDetail(id) {
     if (txBox) {
         if (tersedia.length > 0) {
             txBox.style.display = '';
-            const sel = document.getElementById('selTransisi');
-            if (sel) {
-                sel.innerHTML = '<option value="">— Pilih Status —</option>' +
-                    tersedia.map(s => `<option value="${s}">${STATUS_LABEL[s]||s}</option>`).join('');
+            const selInput = document.getElementById('selTransisi');
+            if (selInput) selInput.value = '';
+
+            const btnContainer = document.getElementById('statusBtnContainer');
+            if (btnContainer) {
+                btnContainer.innerHTML = tersedia.map(s => {
+                    const label = STATUS_LABEL[s] || s;
+                    const icon = getStatusIcon(s);
+                    const styleClass = getStatusBtnClass(s);
+                    return `<button type="button" class="cp-status-btn ${styleClass}" data-status="${s}" onclick="pilihStatusTransisi('${s}')">
+                        ${icon} <span>${escHtml(label)}</span>
+                    </button>`;
+                }).join('');
             }
             document.getElementById('txCatatan').value = '';
             document.getElementById('inLinkPost').value = '';
@@ -374,6 +379,54 @@ async function bukaDetail(id) {
     renderTimeline(log);
 }
 
+function getStatusBtnClass(s) {
+    if (['acc_ide', 'acc_final', 'published'].includes(s)) return 'cp-status-btn-success';
+    if (s === 'revisi') return 'cp-status-btn-warning';
+    if (s === 'ditolak') return 'cp-status-btn-danger';
+    if (s === 'in_design') return 'cp-status-btn-info';
+    if (s === 'review_design') return 'cp-status-btn-purple';
+    return 'cp-status-btn-info';
+}
+
+function getStatusIcon(s) {
+    if (['acc_ide', 'acc_final'].includes(s)) {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`;
+    }
+    if (s === 'published') {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+    }
+    if (s === 'revisi') {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    }
+    if (s === 'ditolak') {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`;
+    }
+    if (s === 'in_design') {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>`;
+    }
+    if (s === 'review_design') {
+        return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    }
+    return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;
+}
+
+function pilihStatusTransisi(targetStatus) {
+    const selInput = document.getElementById('selTransisi');
+    if (selInput) {
+        selInput.value = targetStatus;
+    }
+
+    document.querySelectorAll('.cp-status-btn').forEach(btn => {
+        if (btn.getAttribute('data-status') === targetStatus) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    onTransisiChange();
+}
+
 function onTransisiChange() {
     const val     = document.getElementById('selTransisi').value;
     const roleNow = window.ROLE || '';
@@ -383,6 +436,18 @@ function onTransisiChange() {
     const wrapLink = document.getElementById('wrapLinkPost');
     if (wrapLink) {
         wrapLink.style.display = (val === 'published') ? 'block' : 'none';
+    }
+
+    if (wajib) {
+        const tx = document.getElementById('txCatatan');
+        if (tx && !tx.value.trim()) {
+            tx.focus();
+        }
+    } else if (val === 'published') {
+        const inL = document.getElementById('inLinkPost');
+        if (inL && !inL.value.trim()) {
+            inL.focus();
+        }
     }
 }
 

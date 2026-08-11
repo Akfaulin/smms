@@ -38,8 +38,20 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->get('laporan/export', 'Laporan::export');
 
     // ----------------------------------------------------------
-    // Content Plan
+    // Content Plan & Ide Konten
     // ----------------------------------------------------------
+    $routes->get('ide-konten', 'IdeKonten::index');
+    $routes->post('ide-konten/store', 'IdeKonten::store');
+    $routes->get('trend-ai', 'TrendAi::index');
+    $routes->post('trend-ai/generate-hook', 'TrendAi::generateHook');
+    $routes->get('tugas-creator', 'TugasCreator::index');
+    $routes->get('asset-library', 'AssetLibrary::index');
+    $routes->post('asset-library/store', 'AssetLibrary::store');
+    $routes->post('asset-library/delete/(:num)', 'AssetLibrary::delete/$1');
+    $routes->get('approval-manager', 'ApprovalManager::index');
+    $routes->get('jadwal-upload', 'JadwalUpload::index');
+    $routes->get('kalender-tayang', 'KalenderTayang::index');
+
     $routes->get('content-plan', 'ContentPlan::index');
     $routes->post('content-plan/store', 'ContentPlan::store');
     $routes->post('content-plan/update/(:num)', 'ContentPlan::update/$1');

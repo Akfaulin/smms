@@ -383,12 +383,13 @@
 .cp-tab-panel.active { display: block; }
 
 /* ── Form Fields ────────────────────────────────────────── */
-.cp-row {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 14px; margin-bottom: 14px;
-}
-
 .cp-row.full { grid-template-columns: 1fr; }
+
+@media (max-width: 640px) {
+    .cp-row, .cp-row-3col {
+        grid-template-columns: 1fr !important;
+    }
+}
 
 .cp-field label {
     display: block; font-size: 12px; font-weight: 700;
@@ -498,6 +499,7 @@ textarea.cp-inp { resize: vertical; min-height: 72px; }
 }
 
 .cp-tl-dot.r-manager       { background: #fef9c3; border-color: #f59e0b; color: #92400e; }
+.cp-tl-dot.r-creative_team { background: #ccfbf1; border-color: #14b8a6; color: #0f766e; }
 .cp-tl-dot.r-content_creator { background: #e0f2fe; border-color: #0284c7; color: #075985; }
 .cp-tl-dot.r-admin_medsos  { background: var(--cp-green-l); border-color: #16a34a; color: #14532d; }
 .cp-tl-dot.r-owner         { background: var(--cp-purple-l); border-color: #7c3aed; color: #4c1d95; }
@@ -519,6 +521,7 @@ textarea.cp-inp { resize: vertical; min-height: 72px; }
 }
 
 .cp-tl-rolebadge.r-manager       { background: #fef9c3; color: #92400e; }
+.cp-tl-rolebadge.r-creative_team { background: #ccfbf1; color: #0f766e; }
 .cp-tl-rolebadge.r-content_creator { background: #e0f2fe; color: #075985; }
 .cp-tl-rolebadge.r-admin_medsos  { background: var(--cp-green-l); color: #14532d; }
 .cp-tl-rolebadge.r-owner         { background: var(--cp-purple-l); color: #4c1d95; }
@@ -557,6 +560,75 @@ textarea.cp-inp { resize: vertical; min-height: 72px; }
 .cp-trans-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
 .cp-trans-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; }
 .cp-trans-field label { font-size: 11.5px; font-weight: 700; color: #374151; }
+
+.cp-status-btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cp-status-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid var(--cp-border);
+    background: var(--cp-white);
+    color: var(--cp-text);
+    transition: all 0.18s ease;
+    flex: 1 1 auto;
+    min-width: 110px;
+    outline: none;
+}
+
+.cp-status-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--cp-primary);
+    background: var(--cp-bg);
+}
+
+.cp-status-btn-success:hover { border-color: #10b981; color: #047857; background: #ecfdf5; }
+.cp-status-btn-warning:hover { border-color: #f59e0b; color: #b45309; background: #fffbeb; }
+.cp-status-btn-danger:hover  { border-color: #ef4444; color: #b91c1c; background: #fef2f2; }
+.cp-status-btn-info:hover, .cp-status-btn-purple:hover { border-color: #3b82f6; color: #1d4ed8; background: #eff6ff; }
+
+/* Active States */
+.cp-status-btn.active {
+    transform: translateY(-1px);
+}
+
+.cp-status-btn-success.active {
+    border-color: #10b981;
+    background: #10b981;
+    color: #ffffff;
+    box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
+}
+
+.cp-status-btn-warning.active {
+    border-color: #f59e0b;
+    background: #f59e0b;
+    color: #ffffff;
+    box-shadow: 0 3px 12px rgba(245, 158, 11, 0.3);
+}
+
+.cp-status-btn-danger.active {
+    border-color: #ef4444;
+    background: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 3px 12px rgba(239, 68, 68, 0.3);
+}
+
+.cp-status-btn-info.active, .cp-status-btn-purple.active {
+    border-color: #2563eb;
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 3px 12px rgba(37, 99, 235, 0.3);
+}
 
 .cp-catatan-wrap { margin-top: 10px; }
 .cp-catatan-wrap textarea { width: 100%; min-height: 60px; }

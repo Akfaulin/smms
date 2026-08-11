@@ -44,22 +44,40 @@ class ContentPlan extends BaseController
         $role = session('kode_role');
         $userId = session('user_id');
 
-        // Filter: default 'my_tasks', bisa di-override jadi 'all' dari URL
-        $viewMode = $this->request->getGet('view') ?? 'my_tasks';
+        // Filter: default 'my_ideas' untuk creative_team, 'my_tasks' untuk role lain
+        $defaultView = ($role === 'creative_team') ? 'my_ideas' : 'my_tasks';
+        $viewMode    = $this->request->getGet('view') ?? $defaultView;
 
         $query = $this->model->withRelasi();
 
         if ($viewMode === 'my_tasks') {
             if ($role === 'manager') {
                 $query->whereIn('content_plan.status', ['ide_diajukan', 'review_design']);
+            } elseif ($role === 'creative_team') {
+                $query->groupStart()
+                      ->whereIn('content_plan.status', ['ide_diajukan', 'revisi'])
+                      ->where('content_plan.dibuat_oleh', $userId)
+                      ->groupEnd();
             } elseif ($role === 'content_creator') {
                 $query->groupStart()
                       ->whereIn('content_plan.status', ['acc_ide', 'in_design', 'revisi'])
-                      ->where('content_plan.dibuat_oleh', $userId)
+                      ->groupStart()
+                          ->where('content_plan.assigned_designer', $userId)
+                          ->orWhere('content_plan.dibuat_oleh', $userId)
+                      ->groupEnd()
                       ->groupEnd();
             } elseif ($role === 'admin_medsos') {
-                $query->where('content_plan.status', 'acc_final');
+                $query->groupStart()
+                      ->where('content_plan.status', 'acc_final')
+                      ->groupStart()
+                          ->where('content_plan.assigned_uploader', $userId)
+                          ->orWhere('content_plan.dibuat_oleh', $userId)
+                          ->orWhere('content_plan.assigned_uploader IS NULL')
+                      ->groupEnd()
+                      ->groupEnd();
             }
+        } elseif ($viewMode === 'my_ideas') {
+            $query->where('content_plan.dibuat_oleh', $userId);
         }
 
         $konten = $query->orderBy('content_plan.created_at', 'DESC')->findAll();
@@ -118,8 +136,36 @@ class ContentPlan extends BaseController
         $userId   = (int) session('user_id');
         $kodeRole = session('kode_role');
 
-        if ($kodeRole === 'admin_medsos') {
-            return $this->jsonGagal('Anda tidak memiliki akses untuk membuat konten.', 403);
+        if (in_array($kodeRole, ['admin_medsos', 'content_creator'], true)) {
+            return $this->jsonGagal('Anda tidak memiliki akses untuk membuat ide konten.', 403);
+        }
+
+        $db = \Config\Database::connect();
+
+        $assignedDesigner = $this->request->getPost('assigned_designer') ?: null;
+        if (! $assignedDesigner) {
+            if ($kodeRole === 'content_creator') {
+                $assignedDesigner = $userId;
+            } else {
+                $creatorUser = $db->table('users u')
+                    ->select('u.id')
+                    ->join('roles r', 'r.id = u.role_id', 'left')
+                    ->where('r.kode_role', 'content_creator')
+                    ->where('u.status', 'aktif')
+                    ->get()->getRowArray();
+                $assignedDesigner = $creatorUser['id'] ?? null;
+            }
+        }
+
+        $assignedUploader = $this->request->getPost('assigned_uploader') ?: null;
+        if (! $assignedUploader) {
+            $uploaderUser = $db->table('users u')
+                ->select('u.id')
+                ->join('roles r', 'r.id = u.role_id', 'left')
+                ->where('r.kode_role', 'admin_medsos')
+                ->where('u.status', 'aktif')
+                ->get()->getRowArray();
+            $assignedUploader = $uploaderUser['id'] ?? null;
         }
 
         $data = [
@@ -128,8 +174,8 @@ class ContentPlan extends BaseController
             'tanggal_publish'   => $this->request->getPost('tanggal_publish') ?: null,
             'jenis_konten_id'   => $this->request->getPost('jenis_konten_id') ?: null,
             'content_type_id'   => $this->request->getPost('content_type_id') ?: null,
-            'assigned_designer' => $this->request->getPost('assigned_designer') ?: null,
-            'assigned_uploader' => $this->request->getPost('assigned_uploader') ?: null,
+            'assigned_designer' => $assignedDesigner,
+            'assigned_uploader' => $assignedUploader,
         ];
 
         $contentId = $this->model->buatIde($data, $userId);

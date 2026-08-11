@@ -34,6 +34,10 @@ class RolesSeeder extends Seeder
             'nama_role' => 'Manager',
         ],
         [
+            'kode_role' => 'creative_team',
+            'nama_role' => 'Creative Team',
+        ],
+        [
             'kode_role' => 'content_creator',
             'nama_role' => 'Content Creator',
         ],

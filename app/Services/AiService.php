@@ -147,7 +147,7 @@ class AiService
                 'status_lama' => 'in_design', // karena AI ini nge-trigger pas masuk review_design
                 'status_baru' => 'review_design',
                 'user_id'     => null, // Sistem
-                'catatan'     => "[🤖 AI Pre-Review Checklist]\n" . $output,
+                'catatan'     => "[AI Pre-Review Checklist]\n" . $output,
                 'created_at'  => date('Y-m-d H:i:s'),
             ]);
         }

@@ -47,7 +47,7 @@ class TransisiKonten
             'ditolak'  => ['roles' => ['manager'], 'catatan_wajib' => true],
         ],
         'revisi' => [
-            'ide_diajukan' => ['roles' => ['content_creator'], 'catatan_wajib' => false],
+            'ide_diajukan' => ['roles' => ['creative_team', 'content_creator'], 'catatan_wajib' => false],
         ],
         'acc_ide' => [
             'in_design' => ['roles' => ['content_creator'], 'catatan_wajib' => false],
@@ -216,6 +216,22 @@ class TransisiKonten
                 'created_at'  => date('Y-m-d H:i:s'),
             ]);
 
+            // Jika ide disetujui (acc_ide), otomatis lanjut ke status in_design agar Creator tidak perlu merubah manual
+            $statusBaruFinal = $statusBaru;
+            if ($statusBaru === 'acc_ide') {
+                $statusBaruFinal = 'in_design';
+                $this->contentPlanModel->updateStatus($contentId, 'in_design');
+
+                $this->statusLogModel->insert([
+                    'content_id'  => $contentId,
+                    'status_lama' => 'acc_ide',
+                    'status_baru' => 'in_design',
+                    'user_id'     => $userId,
+                    'catatan'     => 'Otomatis masuk ke status In Design setelah ACC Manager',
+                    'created_at'  => date('Y-m-d H:i:s'),
+                ]);
+            }
+
             $db->transComplete();
 
             if ($db->transStatus() === false) {
@@ -223,7 +239,7 @@ class TransisiKonten
             }
 
             // --- FASE 9.3: AI Pre-Review Checklist ---
-            if ($statusBaru === 'review_design') {
+            if ($statusBaruFinal === 'review_design') {
                 $ai = new \App\Services\AiService();
                 $kontenUpdated = $this->contentPlanModel->find($contentId);
                 if ($kontenUpdated) {
@@ -246,9 +262,9 @@ class TransisiKonten
 
             return [
                 'ok'          => true,
-                'pesan'       => "Status konten berhasil diubah dari '{$statusLama}' ke '{$statusBaru}'.",
+                'pesan'       => "Status konten berhasil disetujui dan langsung otomatis ke '{$statusBaruFinal}'.",
                 'status_lama' => $statusLama,
-                'status_baru' => $statusBaru,
+                'status_baru' => $statusBaruFinal,
             ];
         } catch (\Throwable $e) {
             $db->transRollback();

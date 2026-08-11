@@ -19,7 +19,7 @@ class UserManagement extends BaseController
     {
         $this->model = new UserModel();
     }
-
+    
     /**
      * Cek apakah user boleh mengakses halaman user management.
      * Superadmin dan owner boleh mengakses.

@@ -1,0 +1,133 @@
+/* ============================================================
+   kalender-tayang.css — Dedicated Kalender Tayang Styles
+   ============================================================ */
+
+.kt-best-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .kt-best-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .kt-best-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.kt-best-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.kt-best-card:hover {
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
+}
+
+.kt-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.kt-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.kt-cal-day-head {
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #64748b;
+    padding: 6px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kt-cal-cell {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    min-height: 95px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: border-color 0.18s ease, background 0.18s ease;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.kt-cal-cell:hover {
+    border-color: #cbd5e1;
+}
+
+.kt-cal-cell.today {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.kt-cal-cell.other-month {
+    background: #f8fafc;
+    opacity: 0.45;
+}
+
+.kt-cal-date-num {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: #334155;
+    margin-bottom: 2px;
+}
+
+.kt-cal-pill {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 6px;
+    color: #ffffff;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    min-width: 0;
+    line-height: 1.3;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    display: block;
+    box-sizing: border-box;
+}
+
+.kt-cal-pill:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.kt-cal-pill.acc_final   { background: #16a34a; }
+.kt-cal-pill.published   { background: #2563eb; }
+.kt-cal-pill.in_design   { background: #d97706; }
+.kt-cal-pill.ide_diajukan { background: #64748b; }
+.kt-cal-pill.review_design { background: #7c3aed; }
+.kt-cal-pill.revisi      { background: #dc2626; }

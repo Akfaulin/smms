@@ -25,6 +25,61 @@
             Dashboard
         </a>
 
+        <?php $role = session('kode_role'); ?>
+        <?php if (in_array($role, ['creative_team', 'superadmin', 'owner'], true)): ?>
+        <a href="/dashboard/ide-konten" class="nav-item <?= str_contains(current_url(), 'ide-konten') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18h6m-4 4h2m-6-8c0-2.8 2.2-5 5-5s5 2.2 5 5c0 1.6-.8 3-2 3.8v1.2H10v-1.2C8.8 16 8 14.6 8 13z"/>
+            </svg>
+            Ide Konten
+        </a>
+        <a href="/dashboard/trend-ai" class="nav-item <?= str_contains(current_url(), 'trend-ai') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4"/><path d="M12 16V8"/>
+            </svg>
+            Bank Trend AI
+        </a>
+        <?php endif; ?>
+
+        <?php if (in_array($role, ['content_creator', 'superadmin', 'owner'], true)): ?>
+        <a href="/dashboard/tugas-creator" class="nav-item <?= str_contains(current_url(), 'tugas-creator') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/>
+            </svg>
+            Tugas Desain
+        </a>
+        <a href="/dashboard/asset-library" class="nav-item <?= str_contains(current_url(), 'asset-library') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            Brand Kit & Aset
+        </a>
+        <?php endif; ?>
+
+        <?php if (in_array($role, ['manager', 'superadmin', 'owner'], true)): ?>
+        <a href="/dashboard/approval-manager" class="nav-item <?= str_contains(current_url(), 'approval-manager') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            Approval & Review
+        </a>
+        <?php endif; ?>
+
+        <?php if (in_array($role, ['admin_medsos', 'superadmin', 'owner'], true)): ?>
+        <a href="/dashboard/jadwal-upload" class="nav-item <?= str_contains(current_url(), 'jadwal-upload') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>
+            </svg>
+            Jadwal & Upload
+        </a>
+        <a href="/dashboard/kalender-tayang" class="nav-item <?= str_contains(current_url(), 'kalender-tayang') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Kalender Tayang
+        </a>
+        <?php endif; ?>
+
         <a href="/dashboard/content-plan" class="nav-item <?= str_contains(current_url(), 'content-plan') ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -33,8 +88,6 @@
             </svg>
             Content Plan
         </a>
-
-        <?php $role = session('kode_role'); ?>
         <?php if (in_array($role, ['superadmin', 'owner', 'manager'], true)): ?>
         <a href="/dashboard/laporan" class="nav-item <?= str_contains(current_url(), 'laporan') ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
