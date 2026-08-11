@@ -302,6 +302,51 @@ $roleNow   = $kode_role ?? session('kode_role');
                 <div id="detCaption" style="font-size:14px; color:var(--cp-muted); white-space:pre-wrap;">(Belum ada caption)</div>
             </div>
 
+            <!-- Link Desain Canva Box -->
+            <div class="cp-design-box" id="designBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c4cc" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
+                        Link Desain Canva / Figma
+                    </div>
+                    <a id="btnBukaCanva" class="cpb cpb-sec" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link desain belum diisi" onclick="toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Buka Canva ↗
+                    </a>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva/Figma di sini (https://canva.com/design/...)" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanDesignUrl" onclick="simpanDesignUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
+                        Simpan Link
+                    </button>
+                </div>
+                <div id="designUrlStatus" style="font-size:12px; color:#16a34a; margin-top:6px; display:none; font-weight:500;"></div>
+            </div>
+
+            <!-- Upload Media Gambar Publik Box (Meta Graph API Infrastructure) -->
+            <div class="cp-upload-box" id="uploadImageBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Media Gambar Konten (Upload untuk Publishing)
+                    </div>
+                </div>
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                    <div id="imgPreviewWrap" style="width:70px; height:70px; border-radius:8px; border:1px dashed #cbd5e1; display:flex; align-items:center; justify-content:center; background:#f8fafc; overflow:hidden; flex-shrink:0;">
+                        <span id="imgPreviewEmpty" style="font-size:11px; color:#94a3b8; text-align:center;">Belum ada gambar</span>
+                        <img id="imgPreview" src="" alt="Preview" style="display:none; width:100%; height:100%; object-fit:cover;">
+                    </div>
+                    <div style="flex:1; min-width:200px;">
+                        <input type="file" id="inImageFile" class="cp-inp" accept="image/png, image/jpeg, image/jpg, image/webp" style="font-size:12px; padding:6px 10px; width:100%;">
+                        <div style="font-size:11px; color:var(--cp-muted); margin-top:4px;">Format: JPG, PNG, WEBP (Max 5MB)</div>
+                    </div>
+                    <button type="button" class="cpb cpb-pri" id="btnUploadImage" onclick="uploadGambarKonten()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
+                        Upload Gambar
+                    </button>
+                </div>
+                <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
+            </div>
+
             <!-- Transition Box -->
             <div class="cp-transition-box" id="transitionBox" style="display:none;margin-top:16px">
                 <div class="cp-transition-label" style="display:flex; align-items:center; gap:6px;">

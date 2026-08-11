@@ -46,6 +46,8 @@ class ContentPlanModel extends Model
         'assigned_designer',
         'assigned_uploader',
         'caption',
+        'design_url',
+        'image_url',
     ];
 
     protected $validationRules = [

@@ -279,6 +279,55 @@ async function simpanIde() {
     }
 }
 
+// ─── SMART CANVA LINK HELPERS ─────────────────────────────
+/**
+ * Matrix lookup untuk menentukan URL landing page kategori resmi Canva
+ * berdasarkan jenis konten dan platform utama.
+ */
+function getCanvaCategoryLink(jenisKonten, platformUtama) {
+    const jenis = (jenisKonten || '').toLowerCase().trim();
+    const platform = (platformUtama || '').toLowerCase().trim();
+
+    // Fallback default ke homepage Canva jika kombinasi tidak dikenal
+    const DEFAULT_URL = 'https://www.canva.com';
+
+    // 1. Instagram
+    if (platform.includes('instagram')) {
+        if (jenis.includes('story') || jenis.includes('reels') || jenis.includes('video')) {
+            return 'https://www.canva.com/create/instagram-stories/';
+        }
+        if (jenis.includes('carousel') || jenis.includes('static')) {
+            return 'https://www.canva.com/create/instagram-posts/';
+        }
+    }
+
+    // 2. TikTok
+    if (platform.includes('tiktok')) {
+        if (jenis.includes('reels') || jenis.includes('video') || jenis.includes('story')) {
+            return 'https://www.canva.com/create/tiktok-videos/';
+        }
+    }
+
+    // 3. YouTube
+    if (platform.includes('youtube')) {
+        if (jenis.includes('reels') || jenis.includes('video')) {
+            return 'https://www.canva.com/create/youtube-thumbnails/';
+        }
+    }
+
+    // 4. Facebook
+    if (platform.includes('facebook')) {
+        if (jenis.includes('story')) {
+            return 'https://www.canva.com/create/instagram-stories/';
+        }
+        if (jenis.includes('static') || jenis.includes('carousel')) {
+            return 'https://www.canva.com/create/facebook-posts/';
+        }
+    }
+
+    return DEFAULT_URL;
+}
+
 // ─── MODAL DETAIL + TIMELINE ─────────────────────────────
 async function bukaDetail(id) {
     activeContent = id;
@@ -345,6 +394,66 @@ async function bukaDetail(id) {
         } else {
             btnAi.style.display = 'none';
         }
+    }
+
+    // Smart Canva Link Logic
+    const inDesignUrl = document.getElementById('inDesignUrl');
+    const btnBukaCanva = document.getElementById('btnBukaCanva');
+    const statusDesignUrl = document.getElementById('designUrlStatus');
+
+    if (inDesignUrl) {
+        inDesignUrl.value = k.design_url || '';
+    }
+
+    if (btnBukaCanva) {
+        if (k.design_url && k.design_url.trim() !== '') {
+            // Link tersimpan — aktifkan tombol dan arahkan ke link spesifik
+            btnBukaCanva.href = k.design_url;
+            btnBukaCanva.removeAttribute('onclick');
+            btnBukaCanva.title = 'Buka desain Canva tersimpan';
+            btnBukaCanva.style.opacity = '';
+            btnBukaCanva.style.cursor = '';
+            btnBukaCanva.style.pointerEvents = '';
+            btnBukaCanva.style.filter = '';
+        } else {
+            // Belum ada link — disable tombol dan tampilkan toast saat diklik
+            btnBukaCanva.removeAttribute('href');
+            btnBukaCanva.setAttribute('onclick', "toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;");
+            btnBukaCanva.title = 'Link desain belum diisi';
+            btnBukaCanva.style.opacity = '0.45';
+            btnBukaCanva.style.cursor = 'not-allowed';
+            btnBukaCanva.style.pointerEvents = 'auto';
+            btnBukaCanva.style.filter = 'grayscale(0.7)';
+        }
+    }
+
+    if (statusDesignUrl) {
+        statusDesignUrl.style.display = 'none';
+        statusDesignUrl.textContent = '';
+    }
+
+    // Media Image Preview Handling
+    const imgPreview = document.getElementById('imgPreview');
+    const imgPreviewEmpty = document.getElementById('imgPreviewEmpty');
+    const statusUpload = document.getElementById('uploadImageStatus');
+    const fileInput = document.getElementById('inImageFile');
+
+    if (fileInput) fileInput.value = '';
+
+    if (imgPreview && imgPreviewEmpty) {
+        if (k.image_url) {
+            imgPreview.src = k.image_url;
+            imgPreview.style.display = 'block';
+            imgPreviewEmpty.style.display = 'none';
+        } else {
+            imgPreview.src = '';
+            imgPreview.style.display = 'none';
+            imgPreviewEmpty.style.display = 'block';
+        }
+    }
+    if (statusUpload) {
+        statusUpload.style.display = 'none';
+        statusUpload.textContent = '';
     }
 
     // Transition box
@@ -576,6 +685,132 @@ async function generateAiCaption() {
         if (btn) btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI';
     }
     if (btn) btn.disabled = false;
+}
+
+// ─── Save Design URL (Canva / Figma Link) ─────────────────
+async function simpanDesignUrl() {
+    if (!activeContent) return;
+    const inUrl = document.getElementById('inDesignUrl');
+    const btn = document.getElementById('btnSimpanDesignUrl');
+    const btnBukaCanva = document.getElementById('btnBukaCanva');
+    const statusEl = document.getElementById('designUrlStatus');
+
+    const designUrl = (inUrl?.value || '').trim();
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
+    }
+
+    const fd = new FormData();
+    fd.append('design_url', designUrl);
+
+    const res = await api(`/dashboard/content-plan/design-url/${activeContent}`, 'POST', fd);
+
+    if (res && res.status === 'sukses') {
+        toast('Link desain berhasil disimpan!', 'success');
+        // Update in-memory window.ALL_KONTEN array
+        const allKonten = window.ALL_KONTEN || [];
+        const item = allKonten.find(x => x.id == activeContent);
+        if (item) {
+            item.design_url = designUrl;
+        }
+
+        if (btnBukaCanva) {
+            if (designUrl) {
+                // Link baru disimpan — aktifkan tombol
+                btnBukaCanva.href = designUrl;
+                btnBukaCanva.removeAttribute('onclick');
+                btnBukaCanva.title = 'Buka desain Canva tersimpan';
+                btnBukaCanva.style.opacity = '';
+                btnBukaCanva.style.cursor = '';
+                btnBukaCanva.style.pointerEvents = '';
+                btnBukaCanva.style.filter = '';
+            } else {
+                // Link dihapus — disable tombol kembali
+                btnBukaCanva.removeAttribute('href');
+                btnBukaCanva.setAttribute('onclick', "toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;");
+                btnBukaCanva.title = 'Link desain belum diisi';
+                btnBukaCanva.style.opacity = '0.45';
+                btnBukaCanva.style.cursor = 'not-allowed';
+                btnBukaCanva.style.pointerEvents = 'auto';
+                btnBukaCanva.style.filter = 'grayscale(0.7)';
+            }
+        }
+
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.textContent = designUrl ? '✓ Link desain tersimpan' : '✓ Link desain telah dihapus';
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+        }
+    } else {
+        toast(res ? res.pesan : 'Gagal menyimpan link desain.', 'error');
+    }
+
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Simpan Link';
+    }
+}
+
+// ─── Upload Media Gambar Publik ─────────────────────────────
+async function uploadGambarKonten() {
+    if (!activeContent) return;
+    const fileInput = document.getElementById('inImageFile');
+    const btn = document.getElementById('btnUploadImage');
+    const statusEl = document.getElementById('uploadImageStatus');
+    const imgPreview = document.getElementById('imgPreview');
+    const imgPreviewEmpty = document.getElementById('imgPreviewEmpty');
+
+    const file = fileInput?.files?.[0];
+    if (!file) {
+        toast('Pilih file gambar terlebih dahulu.', 'error');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Uploading...`;
+    }
+
+    const fd = new FormData();
+    fd.append('image_file', file);
+
+    const res = await api(`/dashboard/content-plan/upload-image/${activeContent}`, 'POST', fd);
+
+    if (res && res.status === 'sukses') {
+        toast('Gambar konten berhasil diunggah!', 'success');
+
+        const imageUrl = res.data.image_url;
+
+        // Update in-memory window.ALL_KONTEN array
+        const allKonten = window.ALL_KONTEN || [];
+        const item = allKonten.find(x => x.id == activeContent);
+        if (item) {
+            item.image_url = imageUrl;
+        }
+
+        if (imgPreview && imgPreviewEmpty) {
+            imgPreview.src = imageUrl;
+            imgPreview.style.display = 'block';
+            imgPreviewEmpty.style.display = 'none';
+        }
+
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.textContent = '✓ Media gambar tersimpan (Siap untuk Publishing Meta API)';
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
+        }
+
+        if (fileInput) fileInput.value = '';
+    } else {
+        toast(res ? res.pesan : 'Gagal mengunggah gambar.', 'error');
+    }
+
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Upload Gambar';
+    }
 }
 
 // ─── Modal Helpers ────────────────────────────────────────

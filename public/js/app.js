@@ -47,7 +47,8 @@ function toast(msg, type = 'success') {
 
     const el = document.createElement('div');
     el.className = `cp-toast ${type}`;
-    el.innerHTML = `<span style="display:inline-flex;align-items:center;">${icons[type]||''}</span> ${msg}`;
+    const safeMsg = (msg === undefined || msg === null || msg === 'undefined') ? 'Terjadi kesalahan sistem.' : String(msg);
+    el.innerHTML = `<span style="display:inline-flex;align-items:center;">${icons[type]||''}</span> ${safeMsg}`;
     container.appendChild(el);
 
     setTimeout(() => {

@@ -48,7 +48,7 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
-        $json = $this->request->getJSON();
+        $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $db = \Config\Database::connect();
         $db->table('platforms')->insert([
             'nama_platform' => $this->request->getPost('nama_platform') ?? $json->nama_platform ?? '',
@@ -62,7 +62,7 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
-        $json = $this->request->getJSON();
+        $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $db = \Config\Database::connect();
         $db->table('platforms')->where('id', $id)->update([
             'nama_platform' => $this->request->getPost('nama_platform') ?? $json->nama_platform ?? '',
@@ -87,7 +87,7 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
-        $json = $this->request->getJSON();
+        $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $db = \Config\Database::connect();
         $db->table('jenis_konten')->insert([
             'nama_jenis' => $this->request->getPost('nama_jenis') ?? $json->nama_jenis ?? '',
@@ -100,7 +100,7 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
-        $json = $this->request->getJSON();
+        $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $db = \Config\Database::connect();
         $db->table('jenis_konten')->where('id', $id)->update([
             'nama_jenis' => $this->request->getPost('nama_jenis') ?? $json->nama_jenis ?? '',
@@ -124,7 +124,7 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
-        $json = $this->request->getJSON();
+        $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $db = \Config\Database::connect();
         $db->table('content_types')->insert([
             'nama_type' => $this->request->getPost('nama_type') ?? $json->nama_type ?? '',
@@ -137,7 +137,7 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
-        $json = $this->request->getJSON();
+        $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $db = \Config\Database::connect();
         $db->table('content_types')->where('id', $id)->update([
             'nama_type' => $this->request->getPost('nama_type') ?? $json->nama_type ?? '',

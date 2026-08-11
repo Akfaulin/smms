@@ -73,7 +73,7 @@ class UserManagement extends BaseController
             return $this->jsonGagal('Hanya Superadmin yang dapat menambahkan user baru.', 403);
         }
 
-        $json = $this->request->getJSON();
+        $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $nama     = $this->request->getPost('nama') ?? $json->nama ?? '';
         $email    = $this->request->getPost('email') ?? $json->email ?? '';
         $password = $this->request->getPost('password') ?? $json->password ?? '';
@@ -115,7 +115,7 @@ class UserManagement extends BaseController
             return $this->jsonGagal('User tidak ditemukan', 404);
         }
 
-        $json    = $this->request->getJSON();
+        $json    = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $roleId  = $this->request->getPost('role_id') ?? ($json->role_id ?? '');
 
         // Owner tidak boleh assign role superadmin ke user lain

@@ -91,4 +91,56 @@ class JadwalUpload extends BaseController
             'kode_role'     => $role,
         ]);
     }
+
+    /**
+     * POST /dashboard/jadwal-upload/publish/{id}
+     * Simulasikan / Jalankan publishing otomatis media gambar ke platform (Meta Graph API).
+     */
+    public function publish(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role = session('kode_role');
+
+        if (! in_array($role, ['admin_medsos', 'superadmin', 'owner'], true)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Anda tidak memiliki hak akses untuk melakukan publish.',
+            ]);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ]);
+        }
+
+        // Validasi 1: Gambar publik wajib ada
+        if (empty($konten['image_url'])) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten belum punya gambar untuk dipublish. Silakan upload media gambar terlebih dahulu.',
+            ]);
+        }
+
+        // Validasi 2: Caption (Peringatan jika kosong)
+        $warning = null;
+        if (empty($konten['caption'])) {
+            $warning = 'Catatan: Caption konten masih kosong, publishing akan menyertakan gambar tanpa caption.';
+        }
+
+        // RESPON SIMULASI INFRASTRUKTUR (Meta Graph API siap dipanggil di tahap berikutnya)
+        return $this->response->setJSON([
+            'status'  => 'sukses',
+            'pesan'   => 'Infrastruktur publish siap! Simulasi publishing gambar ke Meta API berhasil.',
+            'warning' => $warning,
+            'data'    => [
+                'content_id' => $id,
+                'judul'      => $konten['judul_konten'],
+                'image_url'  => $konten['image_url'],
+                'caption'    => $konten['caption'] ?? '',
+                'mode'       => 'simulation_ready',
+            ],
+        ]);
+    }
 }

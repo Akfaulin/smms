@@ -299,7 +299,7 @@ class ContentPlan extends BaseController
     public function transition(int $id): \CodeIgniter\HTTP\ResponseInterface
     {
         $userId     = (int) session('user_id');
-        $json       = $this->request->getJSON();
+        $json       = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
         $statusBaru = trim((string) ($this->request->getPost('status_baru') ?? $json?->status_baru ?? $this->request->getVar('status_baru') ?? ''));
         $catatan    = trim((string) ($this->request->getPost('catatan') ?? $json?->catatan ?? $this->request->getVar('catatan') ?? ''));
         $linkPost   = trim((string) ($this->request->getPost('link_postingan') ?? $json?->link_postingan ?? $this->request->getVar('link_postingan') ?? ''));
@@ -445,6 +445,104 @@ class ContentPlan extends BaseController
         }
 
         return $this->jsonSukses('Ide berhasil di-generate', ['hasil' => $ide]);
+    }
+
+    /**
+     * POST /dashboard/content-plan/design-url/{id}
+     * Simpan / update link desain Canva / Figma untuk konten.
+     */
+    public function updateDesignUrl(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $userId   = (int) session('user_id');
+        $kodeRole = session('kode_role');
+        $konten   = $this->model->find($id);
+
+        if (! $konten) {
+            return $this->jsonGagal('Konten tidak ditemukan.', 404);
+        }
+
+        // Pengecekan otorisasi role
+        if (! in_array($kodeRole, ['content_creator', 'creative_team', 'manager', 'superadmin', 'owner'], true)) {
+            return $this->jsonGagal('Anda tidak berwenang mengubah link desain.', 403);
+        }
+
+        // Support both POST form data and JSON payload
+        $postVal   = $this->request->getPost('design_url') ?? $this->request->getVar('design_url');
+        if ($postVal !== null) {
+            $designUrl = (string) $postVal;
+        } else {
+            $json      = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON(true) : [];
+            $designUrl = (string) ($json['design_url'] ?? '');
+        }
+        $designUrl = trim((string) $designUrl);
+
+        // Validasi format URL jika tidak kosong
+        if (! empty($designUrl) && ! filter_var($designUrl, FILTER_VALIDATE_URL)) {
+            return $this->jsonGagal('Format URL link desain tidak valid (harus diawali http:// atau https://).', 422);
+        }
+
+        $this->model->update($id, [
+            'design_url' => $designUrl ?: null,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->jsonSukses('Link desain berhasil disimpan.', ['design_url' => $designUrl]);
+    }
+
+    /**
+     * POST /dashboard/content-plan/upload-image/{id}
+     * Handle upload file gambar lokal untuk konten (JPG, JPEG, PNG, max 5MB).
+     */
+    public function uploadImage(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $userId   = (int) session('user_id');
+        $kodeRole = session('kode_role');
+        $konten   = $this->model->find($id);
+
+        if (! $konten) {
+            return $this->jsonGagal('Konten tidak ditemukan.', 404);
+        }
+
+        // Pengecekan otorisasi role
+        if (! in_array($kodeRole, ['content_creator', 'creative_team', 'manager', 'superadmin', 'owner', 'admin_medsos'], true)) {
+            return $this->jsonGagal('Anda tidak berwenang mengunggah gambar konten.', 403);
+        }
+
+        $file = $this->request->getFile('image_file');
+        if (! $file || ! $file->isValid()) {
+            return $this->jsonGagal('File gambar wajib diunggah.', 422);
+        }
+
+        // Validasi ekstensi & ukuran (max 5MB = 5120KB)
+        $validMime = ['image/jpg', 'image/jpeg', 'image/png', 'image/webp'];
+        if (! in_array($file->getMimeType(), $validMime, true)) {
+            return $this->jsonGagal('Format file harus JPG, JPEG, PNG, atau WEBP.', 422);
+        }
+
+        if ($file->getSizeByUnit('kb') > 5120) {
+            return $this->jsonGagal('Ukuran file maksimal 5MB.', 422);
+        }
+
+        // Buat nama file unik & simpan ke public/uploads/content-images/
+        $uploadDir = FCPATH . 'uploads/content-images/';
+        if (! is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $newName = 'img_' . $id . '_' . uniqid() . '.' . $file->getExtension();
+        $file->move($uploadDir, $newName);
+
+        $imageUrl = base_url('uploads/content-images/' . $newName);
+
+        $this->model->update($id, [
+            'image_url'  => $imageUrl,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->jsonSukses('Gambar konten berhasil diunggah.', [
+            'image_url' => $imageUrl,
+            'file_name' => $newName,
+        ]);
     }
 
     // =========================================================================
