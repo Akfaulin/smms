@@ -230,3 +230,60 @@ function escHtmlNotif(s) {
     if (!s) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+/**
+ * renderMarkdown(txt) — Formatter Teks AI & Markdown yang Rapi
+ */
+function renderMarkdown(txt) {
+    if (!txt) return '';
+
+    // Standardize linebreaks
+    let str = String(txt).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // Remove horizontal rules directly adjacent to headings to prevent double lines
+    str = str.replace(/\n*---\s*\n*(###|\#\#|\#)/g, '\n$1');
+    str = str.replace(/(###|\#\#|\#)(.*?)\n*---\s*/g, '$1$2\n');
+
+    // Escape HTML special characters
+    let html = str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    // Convert horizontal rule --- to elegant subtle divider
+    html = html.replace(/^---$/gim, '<div class="ai-divider"></div>');
+
+    // Headings (### Header, ## Header, # Header)
+    html = html.replace(/^### (.*$)/gim, '<h4 class="ai-heading-3">$1</h4>');
+    html = html.replace(/^## (.*$)/gim, '<h3 class="ai-heading-2">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, '<h2 class="ai-heading-1">$1</h2>');
+
+    // Bold (**text** or __text__)
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="ai-bold">$1</strong>');
+    html = html.replace(/__(.*?)__/g, '<strong class="ai-bold">$1</strong>');
+
+    // Italic (*text*)
+    html = html.replace(/\*([^\*]+)\*/g, '<em class="ai-italic">$1</em>');
+
+    // List items starting with - or *
+    html = html.replace(/^[\-\*]\s+(.*$)/gim, '<div class="ai-list-item"><span class="ai-bullet">•</span><div>$1</div></div>');
+
+    // Numbered list items starting with 1. 2. etc
+    html = html.replace(/^(\d+)\.\s+(.*$)/gim, '<div class="ai-list-item"><span class="ai-num">$1.</span><div>$2</div></div>');
+
+    // Split paragraphs by 2+ newlines, avoiding extra empty lines
+    let paragraphs = html.split(/\n{2,}/);
+    html = paragraphs.map(p => {
+        p = p.trim();
+        if (!p) return '';
+        if (/^<(h[234]|div|p)/i.test(p)) {
+            return p.replace(/\n/g, '<br>');
+        }
+        return `<p class="ai-p">${p.replace(/\n/g, '<br>')}</p>`;
+    }).join('');
+
+    // Clean up unnecessary <br> tags immediately following headings or dividers
+    html = html.replace(/(<\/h[234]>|<div class="ai-divider"><\/div>)\s*<br\s*\/?>/gi, '$1');
+
+    return html;
+}

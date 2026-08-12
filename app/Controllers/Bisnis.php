@@ -110,10 +110,10 @@ class Bisnis extends BaseController
             return $this->jsonGagal('Anda tidak memiliki akses.', 403);
         }
 
-        // Cek batas maksimal 4 bisnis
+        // Cek batas maksimal 10 bisnis
         $total = $this->bisnisModel->countAll();
-        if ($total >= 4) {
-            return $this->jsonGagal('Maksimal hanya 4 bisnis yang dapat dikelola.', 422);
+        if ($total >= 10) {
+            return $this->jsonGagal('Maksimal 10 bisnis yang dapat dikelola sekaligus.', 422);
         }
 
         $data = [
@@ -180,7 +180,7 @@ class Bisnis extends BaseController
 
     /**
      * POST /dashboard/master/bisnis/delete/{id}
-     * Hapus bisnis — hanya jika tidak ada content plan terkait (superadmin/owner).
+     * Hapus bisnis beserta seluruh data terkait (superadmin/owner only).
      */
     public function delete(int $id): \CodeIgniter\HTTP\ResponseInterface
     {
@@ -194,28 +194,51 @@ class Bisnis extends BaseController
             return $this->jsonGagal('Bisnis tidak ditemukan.', 404);
         }
 
-        // Cek apakah ada data terkait
-        $db    = \Config\Database::connect();
-        $count = $db->table('content_plan')->where('bisnis_id', $id)->countAllResults();
-        if ($count > 0) {
-            return $this->jsonGagal("Bisnis tidak dapat dihapus karena masih memiliki {$count} content plan.", 422);
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        // 1. Ambil semua ID content_plan milik bisnis ini
+        $cpIds = $db->table('content_plan')->select('id')->where('bisnis_id', $id)->get()->getResultArray();
+        $cpIdList = array_column($cpIds, 'id');
+
+        if (! empty($cpIdList)) {
+            $db->table('content_status_log')->whereIn('content_plan_id', $cpIdList)->delete();
+            $db->table('bukti_upload')->whereIn('content_plan_id', $cpIdList)->delete();
+            $db->table('content_platforms')->whereIn('content_plan_id', $cpIdList)->delete();
+            $db->table('content_plan')->where('bisnis_id', $id)->delete();
         }
 
-        $this->bisnisModel->delete($id);
+        // 2. Hapus master data terisolasi milik bisnis ini
+        $db->table('platforms')->where('bisnis_id', $id)->delete();
+        $db->table('jenis_konten')->where('bisnis_id', $id)->delete();
+        $db->table('content_types')->where('bisnis_id', $id)->delete();
+        $db->table('brand_assets')->where('bisnis_id', $id)->delete();
+        $db->table('trend_bank')->where('bisnis_id', $id)->delete();
 
-        // Jika bisnis yang dihapus adalah bisnis aktif, reset ke bisnis default
+        // 3. Hapus record bisnis itu sendiri
+        $db->table('bisnis')->where('id', $id)->delete();
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) {
+            return $this->jsonGagal('Gagal menghapus bisnis dari database.', 500);
+        }
+
+        // 4. Jika bisnis yang dihapus adalah bisnis aktif di session, switch ke bisnis tersisa
         if (session('bisnis_aktif_id') == $id) {
-            $default = $this->bisnisModel->getDefault();
+            $default = $this->bisnisModel->where('status', 'aktif')->orderBy('urutan', 'ASC')->first();
             if ($default) {
                 session()->set([
-                    'bisnis_aktif_id'    => $default['id'],
+                    'bisnis_aktif_id'    => (int) $default['id'],
                     'bisnis_aktif_nama'  => $default['nama_bisnis'],
                     'bisnis_aktif_warna' => $default['warna'],
                 ]);
+            } else {
+                session()->remove(['bisnis_aktif_id', 'bisnis_aktif_nama', 'bisnis_aktif_warna']);
             }
         }
 
-        return $this->jsonSukses('Bisnis berhasil dihapus.');
+        return $this->jsonSukses('Bisnis beserta seluruh data terkait berhasil dihapus.');
     }
 
     // =========================================================================

@@ -15,10 +15,10 @@
             </div>
             <div>
                 <h2 class="mb-header-title">Manajemen Bisnis</h2>
-                <p class="mb-header-sub">Kelola bisnis yang sosial medianya dikelola oleh tim SMMS (maks. 4 bisnis)</p>
+                <p class="mb-header-sub">Kelola bisnis/brand yang sosial medianya dikelola oleh tim SMMS</p>
             </div>
         </div>
-        <button class="mb-btn mb-btn-primary" onclick="openAddModal()" <?= count($semua_bisnis) >= 4 ? 'disabled title="Maks. 4 bisnis"' : '' ?>>
+        <button class="mb-btn mb-btn-primary" onclick="openAddModal()" <?= count($semua_bisnis) >= 10 ? 'disabled title="Maks. 10 bisnis"' : '' ?>>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
@@ -84,19 +84,17 @@
         </div>
         <?php endforeach; ?>
 
-        <?php if (count($semua_bisnis) < 4): ?>
-        <!-- Slot kosong -->
-        <?php for ($i = count($semua_bisnis); $i < 4; $i++): ?>
+        <?php if (count($semua_bisnis) < 10): ?>
+        <!-- Slot Tambah Bisnis Baru -->
         <div class="mb-card mb-empty-card" onclick="openAddModal()">
             <div class="mb-empty-inner">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" style="opacity:.3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" style="opacity:.4">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                <span>Slot Bisnis Kosong</span>
-                <small>Klik untuk menambahkan</small>
+                <span>Tambah Bisnis Baru</span>
+                <small>Klik untuk menambahkan slot bisnis</small>
             </div>
         </div>
-        <?php endfor; ?>
         <?php endif; ?>
     </div>
 </div>
@@ -610,10 +608,14 @@
     border-top: 1.5px solid #f1f5f9;
 }
 </style>
+<?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script>
-const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+function getCsrfHeaderToken() {
+    return (typeof getCsrfToken === 'function' ? getCsrfToken() : '') ||
+           document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+}
 
 function openAddModal() {
     document.getElementById('addModal').classList.add('open');
@@ -659,7 +661,7 @@ async function submitAddForm(e) {
     try {
         const r = await fetch('/dashboard/master/bisnis/store', {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF },
+            headers: { 'X-CSRF-TOKEN': getCsrfHeaderToken() },
             body: fd,
         });
         const d = await r.json();
@@ -692,7 +694,7 @@ async function submitEditForm(e) {
     try {
         const r = await fetch('/dashboard/master/bisnis/update/' + id, {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF },
+            headers: { 'X-CSRF-TOKEN': getCsrfHeaderToken() },
             body: fd,
         });
         const d = await r.json();
@@ -711,27 +713,30 @@ async function submitEditForm(e) {
     }
 }
 
-async function hapusBisnis(id, nama) {
-    const ok = await customConfirm(`Hapus bisnis "<strong>${nama}</strong>"?<br><small style="opacity:.7">Bisnis hanya dapat dihapus jika tidak memiliki content plan.</small>`);
-    if (!ok) return;
-
-    try {
-        const r = await fetch('/dashboard/master/bisnis/delete/' + id, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF },
-        });
-        const d = await r.json();
-        if (d.status === 'sukses') {
-            toast('Bisnis berhasil dihapus.', 'success');
-            document.getElementById('card-bisnis-' + id)?.remove();
-        } else {
-            toast(d.pesan || 'Gagal menghapus bisnis.', 'error');
+function hapusBisnis(id, nama) {
+    konfirmasiHapus({
+        title: 'Hapus Bisnis?',
+        message: `Apakah Anda yakin ingin menghapus bisnis "${nama}"? Perhatian: Seluruh data konten plan, platform, dan aset terkait bisnis ini akan ikut terhapus.`,
+        confirmText: 'Ya, Hapus Bisnis',
+        onConfirm: async () => {
+            try {
+                const r = await fetch('/dashboard/master/bisnis/delete/' + id, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': getCsrfHeaderToken() },
+                });
+                const d = await r.json();
+                if (d.status === 'sukses') {
+                    toast('Bisnis berhasil dihapus.', 'success');
+                    document.getElementById('card-bisnis-' + id)?.remove();
+                    setTimeout(() => location.reload(), 700);
+                } else {
+                    toast(d.pesan || 'Gagal menghapus bisnis.', 'error');
+                }
+            } catch (err) {
+                toast('Terjadi kesalahan. Coba lagi.', 'error');
+            }
         }
-    } catch (err) {
-        toast('Terjadi kesalahan. Coba lagi.', 'error');
-    }
+    });
 }
 </script>
-<?= $this->endSection() ?>
-
 <?= $this->endSection() ?>

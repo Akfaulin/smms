@@ -29,6 +29,7 @@ class ContentPlanSeeder extends Seeder
             ['nama' => 'Superadmin',     'email' => 'admin@smm.local',   'role' => 'superadmin'],
             ['nama' => 'Budi Owner',     'email' => 'owner@smm.local',   'role' => 'owner'],
             ['nama' => 'Siti Manager',   'email' => 'manager@smm.local', 'role' => 'manager'],
+            ['nama' => 'Maya Creative',  'email' => 'creative@smm.local', 'role' => 'creative_team'],
             ['nama' => 'Rian Creator',   'email' => 'creator@smm.local', 'role' => 'content_creator'],
             ['nama' => 'Dewi Sosmed',    'email' => 'sosmed@smm.local',  'role' => 'admin_medsos'],
         ];

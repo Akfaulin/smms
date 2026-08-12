@@ -115,7 +115,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
             Rekomendasi Hook AI Siap Pakai:
         </div>
-        <div id="hookResultContent" style="white-space:pre-wrap; line-height:1.6;"></div>
+        <div id="hookResultContent" style="line-height:1.6;"></div>
     </div>
 </div>
 
@@ -297,7 +297,7 @@ function generateTrendHook() {
         btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px; margin-right:4px;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generate Hook AI';
         if (res.sukses) {
             document.getElementById('hookResultBox').style.display = 'block';
-            document.getElementById('hookResultContent').textContent = res.data;
+            document.getElementById('hookResultContent').innerHTML = renderMarkdown(res.data);
         } else {
             alert('Gagal: ' + (res.pesan || 'Terjadi kesalahan.'));
         }
