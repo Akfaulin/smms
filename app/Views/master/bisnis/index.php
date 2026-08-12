@@ -415,14 +415,14 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 14px;
-    border-radius: 8px;
+    padding: 7px 16px;
+    border-radius: 9999px;
     font-size: 0.8rem;
-    font-weight: 700;
+    font-weight: 600;
     font-family: inherit;
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .mb-btn:disabled {
@@ -442,24 +442,29 @@
 }
 
 .mb-btn-outline {
-    background: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    color: #334155;
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    color: #2563eb;
 }
 
 .mb-btn-outline:hover {
-    background: #f1f5f9;
-    color: #0f172a;
+    background: #dbeafe;
+    color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.15);
 }
 
 .mb-btn-danger {
     background: #fef2f2;
-    border: 1.5px solid #fecaca;
+    border: 1px solid #fecaca;
     color: #dc2626;
 }
 
 .mb-btn-danger:hover {
     background: #fee2e2;
+    color: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(220, 38, 38, 0.15);
 }
 
 /* Forms */

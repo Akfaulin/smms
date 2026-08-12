@@ -560,3 +560,47 @@ button { font-family: 'DM Sans', sans-serif; }
     font-size: 13px;
     flex-shrink: 0;
 }
+
+/* ── Minimalist Bubble Action Buttons (Edit & Hapus) ── */
+.btn-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid transparent;
+    line-height: 1.2;
+    text-decoration: none !important;
+}
+
+.btn-bubble-edit {
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    color: #2563eb;
+}
+
+.btn-bubble-edit:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.15);
+}
+
+.btn-bubble-delete {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+}
+
+.btn-bubble-delete:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(220, 38, 38, 0.15);
+}

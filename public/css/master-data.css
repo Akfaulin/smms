@@ -109,14 +109,41 @@
 .b-nonaktif { background: var(--cp-red-l); color: var(--cp-red); }
 
 .btn-act {
-    background: none;
-    border: none;
-    color: var(--cp-blue);
-    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
     font-weight: 600;
-    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    background: #eff6ff;
+    border: 1px solid #dbeafe;
+    color: #2563eb;
+    text-decoration: none !important;
 }
-.btn-act:hover { text-decoration: underline; }
+
+.btn-act:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+.btn-act.btn-del, .btn-act-danger {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+}
+
+.btn-act.btn-del:hover, .btn-act-danger:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
+}
 
 /* Modal */
 .ms-modal {

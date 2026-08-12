@@ -24,14 +24,6 @@
     </span>
 </div>
 
-<!-- Prevent Tab Flash (FOUC) on Page Load -->
-<script>
-(function() {
-    var savedTab = sessionStorage.getItem('active_master_tab') || 'plat';
-    document.write('<style>#p_' + savedTab + ' { display: block !important; opacity: 1 !important; } .ms-tab-panel:not(#p_' + savedTab + ') { display: none !important; opacity: 0 !important; }</style>');
-})();
-</script>
-
 <div class="ms-card">
     <div class="ms-tabs">
         <button class="ms-tab" id="tab_plat" onclick="switchTab('plat', this)">Platform Medsos</button>
@@ -63,8 +55,14 @@
                         </span>
                     </td>
                     <td style="text-align:right">
-                        <button class="btn-act" onclick='editData("plat", <?= json_encode($p) ?>)'>Edit</button>
-                        <button class="btn-act" style="color:var(--cp-red); margin-left:8px;" onclick='deleteData("plat", <?= $p['id'] ?>)'>Hapus</button>
+                        <button class="btn-act" onclick='editData("plat", <?= json_encode($p) ?>)'>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Edit
+                        </button>
+                        <button class="btn-act btn-del" style="margin-left:6px;" onclick='deleteData("plat", <?= $p['id'] ?>)'>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                            Hapus
+                        </button>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -90,8 +88,14 @@
                 <tr>
                     <td style="font-weight:600"><?= esc($j['nama_jenis']) ?></td>
                     <td style="text-align:right">
-                        <button class="btn-act" onclick='editData("jenis", <?= json_encode($j) ?>)'>Edit</button>
-                        <button class="btn-act" style="color:var(--cp-red); margin-left:8px;" onclick='deleteData("jenis", <?= $j['id'] ?>)'>Hapus</button>
+                        <button class="btn-act" onclick='editData("jenis", <?= json_encode($j) ?>)'>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Edit
+                        </button>
+                        <button class="btn-act btn-del" style="margin-left:6px;" onclick='deleteData("jenis", <?= $j['id'] ?>)'>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                            Hapus
+                        </button>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -117,8 +121,14 @@
                 <tr>
                     <td style="font-weight:600"><?= esc($cp['nama_type']) ?></td>
                     <td style="text-align:right">
-                        <button class="btn-act" onclick='editData("pillar", <?= json_encode($cp) ?>)'>Edit</button>
-                        <button class="btn-act" style="color:var(--cp-red); margin-left:8px;" onclick='deleteData("pillar", <?= $cp['id'] ?>)'>Hapus</button>
+                        <button class="btn-act" onclick='editData("pillar", <?= json_encode($cp) ?>)'>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Edit
+                        </button>
+                        <button class="btn-act btn-del" style="margin-left:6px;" onclick='deleteData("pillar", <?= $cp['id'] ?>)'>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                            Hapus
+                        </button>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -155,8 +165,8 @@
     </div>
 </div>
 
-<?= $this->section('scripts') ?>
-<script src="/js/master-data.js"></script>
 <?= $this->endSection() ?>
 
+<?= $this->section('scripts') ?>
+<script src="/js/master-data.js"></script>
 <?= $this->endSection() ?>
