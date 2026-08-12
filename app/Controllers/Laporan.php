@@ -28,47 +28,53 @@ class Laporan extends BaseController
         $db    = \Config\Database::connect();
         $bulan = (int) ($this->request->getGet('bulan') ?: date('n'));
         $tahun = (int) ($this->request->getGet('tahun') ?: date('Y'));
+        $bisnisId = (int) session('bisnis_aktif_id');
 
         $bulanStr = str_pad($bulan, 2, '0', STR_PAD_LEFT);
 
-        // Rekap per status di bulan/tahun terpilih
+        // Rekap per status di bulan/tahun terpilih (filter by bisnis)
         $perStatus = $db->table('content_plan')
             ->select('status, COUNT(*) as jumlah')
+            ->where('bisnis_id', $bisnisId)
             ->where("DATE_FORMAT(created_at, '%Y-%m')", "{$tahun}-{$bulanStr}")
             ->groupBy('status')
             ->orderBy('jumlah', 'DESC')
             ->get()->getResultArray();
 
-        // Rekap per platform
+        // Rekap per platform (filter by bisnis)
         $perPlatform = $db->table('content_platforms cp')
             ->select('p.nama_platform, COUNT(*) as jumlah')
             ->join('platforms p', 'p.id = cp.platform_id')
             ->join('content_plan c', 'c.id = cp.content_id')
+            ->where('c.bisnis_id', $bisnisId)
             ->where("DATE_FORMAT(c.created_at, '%Y-%m')", "{$tahun}-{$bulanStr}")
             ->groupBy('cp.platform_id')
             ->orderBy('jumlah', 'DESC')
             ->get()->getResultArray();
 
-        // Rekap produktivitas per user (pembuat konten)
+        // Rekap produktivitas per user (filter by bisnis)
         $perUser = $db->table('content_plan cp')
             ->select('u.nama, r.nama_role, COUNT(*) as total, 
                       SUM(CASE WHEN cp.status = "published" THEN 1 ELSE 0 END) as published,
                       SUM(CASE WHEN cp.status = "ditolak" THEN 1 ELSE 0 END) as ditolak')
             ->join('users u', 'u.id = cp.dibuat_oleh', 'left')
             ->join('roles r', 'r.id = u.role_id', 'left')
+            ->where('cp.bisnis_id', $bisnisId)
             ->where("DATE_FORMAT(cp.created_at, '%Y-%m')", "{$tahun}-{$bulanStr}")
             ->groupBy('cp.dibuat_oleh')
             ->orderBy('total', 'DESC')
             ->get()->getResultArray();
 
-        // Total keseluruhan bulan ini
+        // Total keseluruhan bulan ini (filter by bisnis)
         $totalBulanIni = $db->table('content_plan')
+            ->where('bisnis_id', $bisnisId)
             ->where("DATE_FORMAT(created_at, '%Y-%m')", "{$tahun}-{$bulanStr}")
             ->countAllResults();
 
-        // Daftar tahun tersedia (dari created_at konten)
+        // Daftar tahun tersedia (filter by bisnis)
         $tahunList = $db->table('content_plan')
             ->select("YEAR(created_at) as tahun")
+            ->where('bisnis_id', $bisnisId)
             ->groupBy('YEAR(created_at)')
             ->orderBy('tahun', 'DESC')
             ->get()->getResultArray();

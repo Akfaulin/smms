@@ -37,6 +37,7 @@ class ContentPlanModel extends Model
      * TransisiKonten::transition() untuk mengubah status.
      */
     protected $allowedFields = [
+        'bisnis_id',
         'judul_konten',
         'deskripsi',
         'tanggal_publish',
@@ -108,6 +109,15 @@ class ContentPlanModel extends Model
     public function milikUser(int $userId): static
     {
         return $this->where('content_plan.dibuat_oleh', $userId);
+    }
+
+    /**
+     * Filter konten berdasarkan bisnis_id.
+     * Digunakan di seluruh controller untuk multi-bisnis isolation.
+     */
+    public function byBisnis(int $bisnisId): static
+    {
+        return $this->where('content_plan.bisnis_id', $bisnisId);
     }
 
     /**

@@ -30,6 +30,10 @@ body {
     display: flex;
     min-height: 100vh;
     font-size: 14px;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    width: 100%;
 }
 
 a { text-decoration: none; color: inherit; }
@@ -145,6 +149,9 @@ button { font-family: 'DM Sans', sans-serif; }
 .main {
     margin-left: var(--sidebar-w);
     flex: 1; display: flex; flex-direction: column;
+    min-width: 0;
+    max-width: calc(100vw - var(--sidebar-w));
+    box-sizing: border-box;
 }
 
 .topbar {
@@ -154,6 +161,8 @@ button { font-family: 'DM Sans', sans-serif; }
     display: flex; align-items: center; justify-content: space-between;
     position: sticky; top: 0; z-index: 100;
     box-shadow: 0 1px 8px rgba(0,0,0,.04);
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 .topbar-left h1 {
@@ -165,7 +174,13 @@ button { font-family: 'DM Sans', sans-serif; }
     font-size: .72rem; color: var(--text-muted); margin-top: 1px;
 }
 
-.page-content { padding: 22px 24px; flex: 1; }
+.page-content {
+    padding: 22px 24px;
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
 
 /* ── Scrollbar ──────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; }

@@ -1,16 +1,32 @@
 /* ============================================================
-   master-data.js — Master Data Module Logic
+   master-data.js — Master Data Module Logic (Tab Persistence)
    Sistem Manajemen Media Sosial
    ============================================================ */
 
-function switchTab(tabId, btn) {
+function switchTab(tabId, btn = null) {
     document.querySelectorAll('.ms-tab').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.ms-tab-panel').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.ms-tab-panel').forEach(el => {
+        el.classList.remove('active');
+        el.style.display = 'none';
+    });
 
-    btn.classList.add('active');
+    const targetBtn = btn || document.getElementById('tab_' + tabId) || document.querySelector(`.ms-tab[onclick*="'${tabId}'"]`);
+    if (targetBtn) targetBtn.classList.add('active');
+
     const panel = document.getElementById('p_' + tabId);
-    if (panel) panel.classList.add('active');
+    if (panel) {
+        panel.classList.add('active');
+        panel.style.display = 'block';
+    }
+
+    sessionStorage.setItem('active_master_tab', tabId);
 }
+
+// Restore tab aktif saat halaman pertama kali dimuat
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTab = sessionStorage.getItem('active_master_tab') || 'plat';
+    switchTab(savedTab);
+});
 
 let mode = 'tambah';
 
@@ -112,12 +128,15 @@ async function simpanData() {
         btn.disabled = true;
     }
 
+    // Simpan tab yang sedang dikerjakan agar tidak ter-reset ke tab 'plat'
+    sessionStorage.setItem('active_master_tab', tipe);
+
     try {
         const res = await api(url, 'POST', data);
         if (res.status === 'sukses') {
             toast(res.pesan, 'success');
             tutupForm();
-            setTimeout(() => location.reload(), 800);
+            setTimeout(() => location.reload(), 500);
         } else {
             toast(res.pesan, 'error');
             if (btn) {
@@ -138,6 +157,9 @@ function deleteData(tipe, id) {
     const labelMap = { plat: 'Platform Medsos', jenis: 'Jenis Konten', pillar: 'Content Pillar' };
     const namaData = labelMap[tipe] || 'Data Master';
 
+    // Simpan tab yang sedang dikerjakan agar setelah hapus tetap di tab ini
+    sessionStorage.setItem('active_master_tab', tipe);
+
     konfirmasiHapus({
         title: `Hapus ${namaData}?`,
         message: `Apakah Anda yakin ingin menghapus ${namaData.toLowerCase()} ini? Tindakan ini tidak dapat dibatalkan.`,
@@ -148,7 +170,7 @@ function deleteData(tipe, id) {
                 const res = await api(endpoint, 'POST');
                 if (res.status === 'sukses') {
                     toast(res.pesan, 'success');
-                    setTimeout(() => location.reload(), 800);
+                    setTimeout(() => location.reload(), 500);
                 } else {
                     toast(res.pesan, 'error');
                 }

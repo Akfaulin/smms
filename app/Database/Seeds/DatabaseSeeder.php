@@ -20,8 +20,7 @@ class DatabaseSeeder extends Seeder
         $this->call(RolesSeeder::class);
         $this->call(UserSeeder::class);
         $this->call(MasterDataSeeder::class);
-        $this->call(ContentPlanSeeder::class);
-        $this->call(TrendBankSeeder::class);
-        $this->call(BrandAssetsSeeder::class);
+        $this->call(BisnisSeeder::class);
+        $this->call(MultiBusinessDataSeeder::class);
     }
 }

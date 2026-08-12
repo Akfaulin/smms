@@ -28,7 +28,9 @@ class KalenderTayang extends BaseController
             return redirect()->to('/dashboard/content-plan');
         }
 
-        $allData = $this->model->withRelasi()
+        $bisnisId = (int) session('bisnis_aktif_id');
+
+        $allData = $this->model->withRelasi()->byBisnis($bisnisId)
             ->where('content_plan.tanggal_publish IS NOT NULL')
             ->orderBy('content_plan.tanggal_publish', 'ASC')
             ->findAll();

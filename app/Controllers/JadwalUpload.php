@@ -33,8 +33,9 @@ class JadwalUpload extends BaseController
 
         $filterStatus = $this->request->getGet('status') ?? 'all';
         $todayStr     = date('Y-m-d');
+        $bisnisId     = (int) session('bisnis_aktif_id');
 
-        $query = $this->model->withRelasi();
+        $query = $this->model->withRelasi()->byBisnis($bisnisId);
 
         // Apply status filter tab
         if ($filterStatus === 'ready') {
@@ -64,18 +65,36 @@ class JadwalUpload extends BaseController
         }
         unset($k);
 
-        // Calculate summary metrics
-        $allData = $db->table('content_plan')->get()->getResultArray();
+        // Calculate summary metrics (filter by bisnis)
+        $allData = $db->table('content_plan')->where('bisnis_id', $bisnisId)->get()->getResultArray();
 
         $statReady     = count(array_filter($allData, fn($i) => $i['status'] === 'acc_final'));
         $statToday     = count(array_filter($allData, fn($i) => !empty($i['tanggal_publish']) && date('Y-m-d', strtotime($i['tanggal_publish'])) === $todayStr));
         $statPublished = count(array_filter($allData, fn($i) => $i['status'] === 'published'));
         $statTotal     = count($allData);
 
-        // Master data untuk form & modal
-        $platforms    = $db->table('platforms')->where('status', 'aktif')->get()->getResultArray();
-        $jenisKonten  = $db->table('jenis_konten')->get()->getResultArray();
-        $contentTypes = $db->table('content_types')->get()->getResultArray();
+        // Master data untuk form & modal (filter by bisnis + global fallback)
+        $platforms    = $db->table('platforms')
+            ->where('status', 'aktif')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $jenisKonten  = $db->table('jenis_konten')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $contentTypes = $db->table('content_types')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
 
         return view('jadwal_upload/index', [
             'judul'         => 'Dashboard Jadwal & Upload Admin Medsos',

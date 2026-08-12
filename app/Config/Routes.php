@@ -82,7 +82,7 @@ $routes->group('dashboard', function (RouteCollection $routes) {
         $routes->post('user/update/(:num)', 'UserManagement::update/$1');
         $routes->post('user/delete/(:num)', 'UserManagement::delete/$1');
 
-        // Master Data
+        // Master Data (Platform, Jenis Konten, Pillar)
         $routes->get('data', 'MasterData::index');
         
         $routes->post('platform/store', 'MasterData::storePlatform');
@@ -96,5 +96,14 @@ $routes->group('dashboard', function (RouteCollection $routes) {
         $routes->post('pillar/store', 'MasterData::storePillar');
         $routes->post('pillar/update/(:num)', 'MasterData::updatePillar/$1');
         $routes->post('pillar/delete/(:num)', 'MasterData::deletePillar/$1');
+
+        // Master Bisnis (superadmin/owner only)
+        $routes->get('bisnis', 'Bisnis::index');
+        $routes->post('bisnis/store', 'Bisnis::store');
+        $routes->post('bisnis/update/(:num)', 'Bisnis::update/$1');
+        $routes->post('bisnis/delete/(:num)', 'Bisnis::delete/$1');
     });
+
+    // Business Switcher — ganti bisnis aktif via session (POST & GET)
+    $routes->match(['get', 'post'], 'bisnis/switch/(:num)', 'Bisnis::switch/$1');
 });

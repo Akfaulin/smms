@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($judul ?? 'Dashboard') ?> — SMMS</title>
     <meta name="description" content="Sistem Manajemen Media Sosial Internal Tim">
-    <!-- CSRF Token untuk AJAX request -->
+    <!-- CSRF Token & Base URL untuk AJAX request -->
     <meta name="csrf-token" content="<?= csrf_hash() ?>">
+    <meta name="base-url" content="<?= base_url() ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/app.css">

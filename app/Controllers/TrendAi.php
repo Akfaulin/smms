@@ -28,8 +28,11 @@ class TrendAi extends BaseController
             return redirect()->to('/dashboard/content-plan');
         }
 
-        // Master trend audio & visual Reels/TikTok (Dinamis dari database trend_bank)
+        $bisnisId = (int) session('bisnis_aktif_id');
+
+        // Master trend audio & visual Reels/TikTok (Dinamis dari database trend_bank, filter by bisnis)
         $audioTrends = $db->table('trend_bank')
+            ->where('bisnis_id', $bisnisId)
             ->where('status', 'aktif')
             ->orderBy('id', 'DESC')
             ->get()->getResultArray();
@@ -43,10 +46,28 @@ class TrendAi extends BaseController
             ['tanggal' => '10 Oktober 2026', 'momen' => 'Promo 10.10 Festival Belanja', 'tag' => 'Promo Big Sale']
         ];
 
-        // Master data untuk modal ajukan ide
-        $platforms    = $db->table('platforms')->where('status', 'aktif')->get()->getResultArray();
-        $jenisKonten  = $db->table('jenis_konten')->get()->getResultArray();
-        $contentTypes = $db->table('content_types')->get()->getResultArray();
+        // Master data untuk modal ajukan ide (filter by bisnis + global fallback)
+        $platforms    = $db->table('platforms')
+            ->where('status', 'aktif')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $jenisKonten  = $db->table('jenis_konten')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $contentTypes = $db->table('content_types')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
 
         return view('trend_ai/index', [
             'judul'         => 'Bank Trend & Inspirasi AI',

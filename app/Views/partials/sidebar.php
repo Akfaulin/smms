@@ -12,7 +12,43 @@
                 <div class="brand-text-sub">Social Media Management</div>
             </div>
         </a>
+        <?php if (session('bisnis_aktif_id')): ?>
+        <div class="sidebar-bisnis-badge" title="Bisnis yang sedang dikelola">
+            <span class="sidebar-bisnis-dot" style="background:<?= esc(session('bisnis_aktif_warna') ?? '#6C5CE7') ?>"></span>
+            <span class="sidebar-bisnis-nama"><?= esc(session('bisnis_aktif_nama') ?? 'Default') ?></span>
+        </div>
+        <?php endif; ?>
     </div>
+
+<style>
+.sidebar-bisnis-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 2px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.sidebar-bisnis-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 4px rgba(0,0,0,0.15);
+}
+.sidebar-bisnis-nama {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #334155;
+}
+</style>
 
     <nav class="sidebar-nav">
         <div class="nav-section-label">Menu</div>
@@ -116,6 +152,15 @@
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
             </svg>
             Platform & Jenis
+        </a>
+
+        <a href="/dashboard/master/bisnis" class="nav-item <?= str_contains(current_url(), 'master/bisnis') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            Manajemen Bisnis
         </a>
         <?php endif; ?>
     </nav>

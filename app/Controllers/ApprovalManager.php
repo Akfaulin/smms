@@ -32,8 +32,9 @@ class ApprovalManager extends BaseController
         }
 
         $filterStatus = $this->request->getGet('status') ?? 'all';
+        $bisnisId     = (int) session('bisnis_aktif_id');
 
-        $query = $this->model->withRelasi();
+        $query = $this->model->withRelasi()->byBisnis($bisnisId);
 
         // Apply status filter tab
         if ($filterStatus === 'pending_ide') {
@@ -60,18 +61,36 @@ class ApprovalManager extends BaseController
         }
         unset($k);
 
-        // Calculate summary metrics
-        $allData = $db->table('content_plan')->get()->getResultArray();
+        // Calculate summary metrics (filter by bisnis)
+        $allData = $db->table('content_plan')->where('bisnis_id', $bisnisId)->get()->getResultArray();
 
         $statIdePending    = count(array_filter($allData, fn($i) => $i['status'] === 'ide_diajukan'));
         $statDesignPending = count(array_filter($allData, fn($i) => $i['status'] === 'review_design'));
         $statApproved      = count(array_filter($allData, fn($i) => in_array($i['status'], ['acc_ide', 'in_design', 'acc_final', 'published'], true)));
         $statRevisi        = count(array_filter($allData, fn($i) => $i['status'] === 'revisi'));
 
-        // Master data untuk form & modal
-        $platforms    = $db->table('platforms')->where('status', 'aktif')->get()->getResultArray();
-        $jenisKonten  = $db->table('jenis_konten')->get()->getResultArray();
-        $contentTypes = $db->table('content_types')->get()->getResultArray();
+        // Master data untuk form & modal (filter by bisnis + global fallback)
+        $platforms    = $db->table('platforms')
+            ->where('status', 'aktif')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $jenisKonten  = $db->table('jenis_konten')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $contentTypes = $db->table('content_types')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
 
         return view('approval_manager/index', [
             'judul'             => 'Dashboard Approval Manager',

@@ -19,7 +19,10 @@ class AssetLibrary extends BaseController
             return redirect()->to('/dashboard/content-plan');
         }
 
+        $bisnisId = (int) session('bisnis_aktif_id');
+
         $allAssets = $db->table('brand_assets')
+            ->where('bisnis_id', $bisnisId)
             ->orderBy('id', 'DESC')
             ->get()->getResultArray();
 
@@ -50,6 +53,7 @@ class AssetLibrary extends BaseController
         }
 
         $data = [
+            'bisnis_id'      => (int) session('bisnis_aktif_id'),
             'nama_aset'      => $this->request->getPost('nama_aset'),
             'kategori'       => $kategori,
             'nilai_atau_url' => $val,

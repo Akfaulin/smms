@@ -31,10 +31,11 @@ class IdeKonten extends BaseController
             return redirect()->to('/dashboard/content-plan');
         }
 
-        $userId   = (int) session('user_id');
+        $userId       = (int) session('user_id');
+        $bisnisId     = (int) session('bisnis_aktif_id');
         $filterStatus = $this->request->getGet('status') ?? 'all';
 
-        $query = $this->model->withRelasi();
+        $query = $this->model->withRelasi()->byBisnis($bisnisId);
 
         // Jika Creative Team / Content Creator: tampilkan ide buatan sendiri (kecuali jika minta 'all')
         if (in_array($role, ['creative_team', 'content_creator'], true)) {
@@ -66,8 +67,8 @@ class IdeKonten extends BaseController
         }
         unset($k);
 
-        // Calculate summary metrics
-        $baseCountQuery = $db->table('content_plan');
+        // Calculate summary metrics (filter by bisnis)
+        $baseCountQuery = $db->table('content_plan')->where('bisnis_id', $bisnisId);
         if (in_array($role, ['creative_team', 'content_creator'], true)) {
             $baseCountQuery->where('dibuat_oleh', $userId);
         }
@@ -79,10 +80,28 @@ class IdeKonten extends BaseController
         $statApproved = count(array_filter($allIdeData, fn($i) => in_array($i['status'], ['acc_ide', 'in_design', 'review_design', 'acc_final', 'published'], true)));
         $statRevisi   = count(array_filter($allIdeData, fn($i) => $i['status'] === 'revisi'));
 
-        // Master data untuk form modal
-        $platforms    = $db->table('platforms')->where('status', 'aktif')->get()->getResultArray();
-        $jenisKonten  = $db->table('jenis_konten')->get()->getResultArray();
-        $contentTypes = $db->table('content_types')->get()->getResultArray();
+        // Master data untuk form modal (filter by bisnis + global fallback)
+        $platforms    = $db->table('platforms')
+            ->where('status', 'aktif')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $jenisKonten  = $db->table('jenis_konten')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $contentTypes = $db->table('content_types')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
 
         return view('ide_konten/index', [
             'judul'        => 'Dashboard Ide Konten',

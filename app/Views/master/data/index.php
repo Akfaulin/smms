@@ -6,17 +6,43 @@
 
 <?= $this->section('content') ?>
 
+<?php
+    $bisnisNama  = session('bisnis_aktif_nama') ?? 'Default';
+    $bisnisWarna = session('bisnis_aktif_warna') ?? '#6C5CE7';
+?>
+
+<!-- Header Info Bisnis Aktif -->
+<div class="ms-bisnis-header" style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:14px; padding:14px 20px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span style="width:12px; height:12px; border-radius:50%; background:<?= esc($bisnisWarna) ?>; display:inline-block; box-shadow:0 0 6px rgba(0,0,0,0.15);"></span>
+        <span style="font-size:0.88rem; font-weight:700; color:#0f172a;">
+            Master Data untuk: <strong style="color:<?= esc($bisnisWarna) ?>;"><?= esc($bisnisNama) ?></strong>
+        </span>
+    </div>
+    <span style="font-size:0.75rem; color:#64748b; font-weight:500;">
+        Ganti bisnis aktif di topbar jika ingin mengelola master data bisnis lain.
+    </span>
+</div>
+
+<!-- Prevent Tab Flash (FOUC) on Page Load -->
+<script>
+(function() {
+    var savedTab = sessionStorage.getItem('active_master_tab') || 'plat';
+    document.write('<style>#p_' + savedTab + ' { display: block !important; opacity: 1 !important; } .ms-tab-panel:not(#p_' + savedTab + ') { display: none !important; opacity: 0 !important; }</style>');
+})();
+</script>
+
 <div class="ms-card">
     <div class="ms-tabs">
-        <button class="ms-tab active" onclick="switchTab('plat', this)">Platform Medsos</button>
-        <button class="ms-tab" onclick="switchTab('jenis', this)">Jenis Konten</button>
-        <button class="ms-tab" onclick="switchTab('pillar', this)">Content Pillar</button>
+        <button class="ms-tab" id="tab_plat" onclick="switchTab('plat', this)">Platform Medsos</button>
+        <button class="ms-tab" id="tab_jenis" onclick="switchTab('jenis', this)">Jenis Konten</button>
+        <button class="ms-tab" id="tab_pillar" onclick="switchTab('pillar', this)">Content Pillar</button>
     </div>
 
     <!-- Panel Platform -->
     <div class="ms-tab-panel active" id="p_plat">
         <div class="ms-header">
-            <div class="ms-title">Platform Sosial Media</div>
+            <div class="ms-title">Platform Sosial Media (<?= esc($bisnisNama) ?>)</div>
             <button class="btn-save" onclick="bukaForm('plat')">+ Tambah Platform</button>
         </div>
         <table class="ms-table">
@@ -49,7 +75,7 @@
     <!-- Panel Jenis Konten -->
     <div class="ms-tab-panel" id="p_jenis">
         <div class="ms-header">
-            <div class="ms-title">Jenis Konten (Format)</div>
+            <div class="ms-title">Jenis Konten / Format (<?= esc($bisnisNama) ?>)</div>
             <button class="btn-save" onclick="bukaForm('jenis')">+ Tambah Jenis</button>
         </div>
         <table class="ms-table">
@@ -76,7 +102,7 @@
     <!-- Panel Content Pillar -->
     <div class="ms-tab-panel" id="p_pillar">
         <div class="ms-header">
-            <div class="ms-title">Content Pillar (Kategori)</div>
+            <div class="ms-title">Content Pillar / Kategori (<?= esc($bisnisNama) ?>)</div>
             <button class="btn-save" onclick="bukaForm('pillar')">+ Tambah Pillar</button>
         </div>
         <table class="ms-table">

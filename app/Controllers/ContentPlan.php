@@ -40,15 +40,17 @@ class ContentPlan extends BaseController
      */
     public function index(): string
     {
-        $db   = \Config\Database::connect();
-        $role = session('kode_role');
-        $userId = session('user_id');
+        $db       = \Config\Database::connect();
+        $role     = session('kode_role');
+        $userId   = session('user_id');
+        $bisnisId = (int) session('bisnis_aktif_id');
 
         // Filter: default 'my_ideas' untuk creative_team, 'my_tasks' untuk role lain
         $defaultView = ($role === 'creative_team') ? 'my_ideas' : 'my_tasks';
         $viewMode    = $this->request->getGet('view') ?? $defaultView;
 
-        $query = $this->model->withRelasi();
+        // Filter by bisnis aktif
+        $query = $this->model->withRelasi()->byBisnis($bisnisId);
 
         if ($viewMode === 'my_tasks') {
             if ($role === 'manager') {
@@ -94,10 +96,29 @@ class ContentPlan extends BaseController
         }
         unset($k);
 
-        // Master data untuk form
-        $platforms    = $db->table('platforms')->where('status', 'aktif')->get()->getResultArray();
-        $jenisKonten  = $db->table('jenis_konten')->get()->getResultArray();
-        $contentTypes = $db->table('content_types')->get()->getResultArray();
+        // Master data untuk form (filter by bisnis aktif + global fallback)
+        $bisnisId     = (int) session('bisnis_aktif_id');
+        $platforms    = $db->table('platforms')
+            ->where('status', 'aktif')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $jenisKonten  = $db->table('jenis_konten')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $contentTypes = $db->table('content_types')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
 
         // Users per role untuk assigned_designer & assigned_uploader
         $allUsers     = $db->table('users u')
@@ -169,6 +190,7 @@ class ContentPlan extends BaseController
         }
 
         $data = [
+            'bisnis_id'         => (int) session('bisnis_aktif_id'),
             'judul_konten'      => $this->request->getPost('judul_konten'),
             'deskripsi'         => $this->request->getPost('deskripsi'),
             'tanggal_publish'   => $this->request->getPost('tanggal_publish') ?: null,

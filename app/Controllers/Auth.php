@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\UserModel;
+use App\Models\BisnisModel;
 
 /**
  * Auth Controller
@@ -68,14 +69,21 @@ class Auth extends BaseController
                 ->with('error', 'Password salah.');
         }
 
+        // Cari bisnis default untuk sesi aktif
+        $bisnisModel  = new BisnisModel();
+        $bisnisDefault = $bisnisModel->getDefault();
+
         // Simpan ke session
         session()->set([
-            'user_id'    => $user['id'],
-            'nama'       => $user['nama'],
-            'email'      => $user['email'],
-            'kode_role'  => $user['kode_role'],
-            'nama_role'  => $user['nama_role'],
-            'logged_in'  => true,
+            'user_id'            => $user['id'],
+            'nama'               => $user['nama'],
+            'email'              => $user['email'],
+            'kode_role'          => $user['kode_role'],
+            'nama_role'          => $user['nama_role'],
+            'logged_in'          => true,
+            'bisnis_aktif_id'    => $bisnisDefault['id']    ?? null,
+            'bisnis_aktif_nama'  => $bisnisDefault['nama_bisnis'] ?? 'Default',
+            'bisnis_aktif_warna' => $bisnisDefault['warna'] ?? '#6C5CE7',
         ]);
 
         return redirect()->to('/dashboard')
@@ -91,7 +99,8 @@ class Auth extends BaseController
      */
     public function logout(): \CodeIgniter\HTTP\RedirectResponse
     {
-        session()->remove(['user_id', 'nama', 'email', 'kode_role', 'nama_role', 'logged_in']);
+        session()->remove(['user_id', 'nama', 'email', 'kode_role', 'nama_role', 'logged_in',
+                           'bisnis_aktif_id', 'bisnis_aktif_nama', 'bisnis_aktif_warna']);
         session()->destroy();
         return redirect()->to('/login')
             ->with('pesan', 'Anda telah berhasil logout.');

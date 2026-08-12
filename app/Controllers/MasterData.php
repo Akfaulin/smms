@@ -6,6 +6,7 @@ namespace App\Controllers;
  * MasterData Controller
  * 
  * Mengelola entitas master (Platforms, Jenis Konten, Content Types / Pillar).
+ * Setiap data master terisolasi per bisnis aktif.
  * Hanya superadmin dan owner yang dapat mengakses endpoint di sini.
  */
 class MasterData extends BaseController
@@ -19,7 +20,7 @@ class MasterData extends BaseController
     }
 
     /**
-     * Tampilkan halaman Master Data (Tabbed View)
+     * Tampilkan halaman Master Data (Tabbed View) untuk bisnis aktif.
      */
     public function index()
     {
@@ -27,11 +28,20 @@ class MasterData extends BaseController
             return redirect()->to('/dashboard/content-plan')->with('error', 'Akses ditolak.');
         }
 
-        $db = \Config\Database::connect();
-        
-        $platforms   = $db->table('platforms')->orderBy('nama_platform', 'ASC')->get()->getResultArray();
-        $jenisKonten = $db->table('jenis_konten')->orderBy('nama_jenis', 'ASC')->get()->getResultArray();
-        $pillars     = $db->table('content_types')->orderBy('nama_type', 'ASC')->get()->getResultArray();
+        $db       = \Config\Database::connect();
+        $bisnisId = (int) session('bisnis_aktif_id');
+
+        $platforms   = $db->table('platforms')
+            ->where('bisnis_id', $bisnisId)
+            ->orderBy('nama_platform', 'ASC')->get()->getResultArray();
+
+        $jenisKonten = $db->table('jenis_konten')
+            ->where('bisnis_id', $bisnisId)
+            ->orderBy('nama_jenis', 'ASC')->get()->getResultArray();
+
+        $pillars     = $db->table('content_types')
+            ->where('bisnis_id', $bisnisId)
+            ->orderBy('nama_type', 'ASC')->get()->getResultArray();
 
         return view('master/data/index', [
             'judul'       => 'Master Data',
@@ -49,9 +59,10 @@ class MasterData extends BaseController
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
         $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
-        $db = \Config\Database::connect();
+        $db   = \Config\Database::connect();
         $db->table('platforms')->insert([
-            'nama_platform' => $this->request->getPost('nama_platform') ?? $json->nama_platform ?? '',
+            'bisnis_id'     => (int) session('bisnis_aktif_id'),
+            'nama_platform' => trim($this->request->getPost('nama_platform') ?? $json->nama_platform ?? ''),
             'status'        => $this->request->getPost('status') ?? $json->status ?? 'aktif',
         ]);
 
@@ -63,11 +74,14 @@ class MasterData extends BaseController
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
         $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
-        $db = \Config\Database::connect();
-        $db->table('platforms')->where('id', $id)->update([
-            'nama_platform' => $this->request->getPost('nama_platform') ?? $json->nama_platform ?? '',
-            'status'        => $this->request->getPost('status') ?? $json->status ?? 'aktif',
-        ]);
+        $db   = \Config\Database::connect();
+        $db->table('platforms')
+            ->where('id', $id)
+            ->where('bisnis_id', (int) session('bisnis_aktif_id'))
+            ->update([
+                'nama_platform' => trim($this->request->getPost('nama_platform') ?? $json->nama_platform ?? ''),
+                'status'        => $this->request->getPost('status') ?? $json->status ?? 'aktif',
+            ]);
 
         return $this->jsonSukses('Platform berhasil diperbarui.');
     }
@@ -76,7 +90,10 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
         $db = \Config\Database::connect();
-        $db->table('platforms')->where('id', $id)->delete();
+        $db->table('platforms')
+            ->where('id', $id)
+            ->where('bisnis_id', (int) session('bisnis_aktif_id'))
+            ->delete();
         return $this->jsonSukses('Platform berhasil dihapus.');
     }
 
@@ -88,9 +105,10 @@ class MasterData extends BaseController
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
         $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
-        $db = \Config\Database::connect();
+        $db   = \Config\Database::connect();
         $db->table('jenis_konten')->insert([
-            'nama_jenis' => $this->request->getPost('nama_jenis') ?? $json->nama_jenis ?? '',
+            'bisnis_id'  => (int) session('bisnis_aktif_id'),
+            'nama_jenis' => trim($this->request->getPost('nama_jenis') ?? $json->nama_jenis ?? ''),
         ]);
 
         return $this->jsonSukses('Jenis konten berhasil ditambahkan.');
@@ -101,10 +119,13 @@ class MasterData extends BaseController
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
         $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
-        $db = \Config\Database::connect();
-        $db->table('jenis_konten')->where('id', $id)->update([
-            'nama_jenis' => $this->request->getPost('nama_jenis') ?? $json->nama_jenis ?? '',
-        ]);
+        $db   = \Config\Database::connect();
+        $db->table('jenis_konten')
+            ->where('id', $id)
+            ->where('bisnis_id', (int) session('bisnis_aktif_id'))
+            ->update([
+                'nama_jenis' => trim($this->request->getPost('nama_jenis') ?? $json->nama_jenis ?? ''),
+            ]);
 
         return $this->jsonSukses('Jenis konten berhasil diperbarui.');
     }
@@ -113,7 +134,10 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
         $db = \Config\Database::connect();
-        $db->table('jenis_konten')->where('id', $id)->delete();
+        $db->table('jenis_konten')
+            ->where('id', $id)
+            ->where('bisnis_id', (int) session('bisnis_aktif_id'))
+            ->delete();
         return $this->jsonSukses('Jenis konten berhasil dihapus.');
     }
 
@@ -125,9 +149,10 @@ class MasterData extends BaseController
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
         $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
-        $db = \Config\Database::connect();
+        $db   = \Config\Database::connect();
         $db->table('content_types')->insert([
-            'nama_type' => $this->request->getPost('nama_type') ?? $json->nama_type ?? '',
+            'bisnis_id' => (int) session('bisnis_aktif_id'),
+            'nama_type' => trim($this->request->getPost('nama_type') ?? $json->nama_type ?? ''),
         ]);
 
         return $this->jsonSukses('Content Pillar berhasil ditambahkan.');
@@ -138,10 +163,13 @@ class MasterData extends BaseController
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
 
         $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON() : null;
-        $db = \Config\Database::connect();
-        $db->table('content_types')->where('id', $id)->update([
-            'nama_type' => $this->request->getPost('nama_type') ?? $json->nama_type ?? '',
-        ]);
+        $db   = \Config\Database::connect();
+        $db->table('content_types')
+            ->where('id', $id)
+            ->where('bisnis_id', (int) session('bisnis_aktif_id'))
+            ->update([
+                'nama_type' => trim($this->request->getPost('nama_type') ?? $json->nama_type ?? ''),
+            ]);
 
         return $this->jsonSukses('Content Pillar berhasil diperbarui.');
     }
@@ -150,7 +178,10 @@ class MasterData extends BaseController
     {
         if (! $this->checkAccess()) return $this->jsonGagal('Akses ditolak', 403);
         $db = \Config\Database::connect();
-        $db->table('content_types')->where('id', $id)->delete();
+        $db->table('content_types')
+            ->where('id', $id)
+            ->where('bisnis_id', (int) session('bisnis_aktif_id'))
+            ->delete();
         return $this->jsonSukses('Content Pillar berhasil dihapus.');
     }
 

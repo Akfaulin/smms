@@ -32,9 +32,10 @@ class TugasCreator extends BaseController
         }
 
         $userId       = (int) session('user_id');
+        $bisnisId     = (int) session('bisnis_aktif_id');
         $filterStatus = $this->request->getGet('status') ?? 'all';
 
-        $query = $this->model->withRelasi();
+        $query = $this->model->withRelasi()->byBisnis($bisnisId);
 
         // Content Creator memonitoring tugas yang ditugaskan kepadanya (assigned_designer) atau dibuat olehnya
         if ($role === 'content_creator') {
@@ -69,8 +70,8 @@ class TugasCreator extends BaseController
         }
         unset($k);
 
-        // Calculate summary metrics
-        $baseCountQuery = $db->table('content_plan');
+        // Calculate summary metrics (filter by bisnis)
+        $baseCountQuery = $db->table('content_plan')->where('bisnis_id', $bisnisId);
         if ($role === 'content_creator') {
             $baseCountQuery->groupStart()
                            ->where('assigned_designer', $userId)
@@ -85,10 +86,28 @@ class TugasCreator extends BaseController
         $statRevisi     = count(array_filter($allTaskData, fn($i) => $i['status'] === 'revisi'));
         $statCompleted  = count(array_filter($allTaskData, fn($i) => in_array($i['status'], ['acc_final', 'published'], true)));
 
-        // Master data untuk form & modal
-        $platforms    = $db->table('platforms')->where('status', 'aktif')->get()->getResultArray();
-        $jenisKonten  = $db->table('jenis_konten')->get()->getResultArray();
-        $contentTypes = $db->table('content_types')->get()->getResultArray();
+        // Master data untuk form & modal (filter by bisnis + global fallback)
+        $platforms    = $db->table('platforms')
+            ->where('status', 'aktif')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $jenisKonten  = $db->table('jenis_konten')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
+
+        $contentTypes = $db->table('content_types')
+            ->groupStart()
+                ->where('bisnis_id', $bisnisId)
+                ->orWhere('bisnis_id IS NULL')
+            ->groupEnd()
+            ->get()->getResultArray();
 
         return view('tugas_creator/index', [
             'judul'         => 'Dashboard Tugas Content Creator',
