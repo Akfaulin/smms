@@ -67,7 +67,9 @@ $routes->group('dashboard', function (RouteCollection $routes) {
 
     // Endpoint AI (Tahap 9)
     $routes->post('content-plan/ai-caption/(:num)', 'ContentPlan::generateCaption/$1');
+    $routes->post('content-plan/update-caption/(:num)', 'ContentPlan::updateCaption/$1');
     $routes->post('content-plan/ai-ideas', 'ContentPlan::generateIdeas');
+    $routes->post('content-plan/ai-brief', 'ContentPlan::generateBrief');
     $routes->post('content-plan/design-url/(:num)', 'ContentPlan::updateDesignUrl/$1');
     $routes->post('content-plan/image-url/(:num)', 'ContentPlan::updateImageUrl/$1');
     $routes->post('content-plan/upload-image/(:num)', 'ContentPlan::uploadImage/$1');

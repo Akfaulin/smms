@@ -447,6 +447,42 @@ class ContentPlan extends BaseController
     }
 
     /**
+     * POST /dashboard/content-plan/update-caption/{id}
+     * Simpan / update caption manual untuk konten.
+     */
+    public function updateCaption(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $userId   = (int) session('user_id');
+        $kodeRole = session('kode_role');
+        $konten   = $this->model->find($id);
+
+        if (! $konten) {
+            return $this->jsonGagal('Konten tidak ditemukan.', 404);
+        }
+
+        // Pengecekan otorisasi role
+        if (! in_array($kodeRole, ['content_creator', 'creative_team', 'manager', 'superadmin', 'owner'], true)) {
+            return $this->jsonGagal('Anda tidak berwenang mengubah caption.', 403);
+        }
+
+        $postVal = $this->request->getPost('caption') ?? $this->request->getVar('caption');
+        if ($postVal !== null) {
+            $caption = (string) $postVal;
+        } else {
+            $json    = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON(true) : [];
+            $caption = (string) ($json['caption'] ?? '');
+        }
+        $caption = trim($caption);
+
+        $this->model->update($id, [
+            'caption'    => $caption ?: null,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->jsonSukses('Caption berhasil disimpan.', ['caption' => $caption]);
+    }
+
+    /**
      * POST /dashboard/content-plan/ai-ideas
      * Ide konten otomatis dari AI berdasarkan topik & platform.
      */
@@ -468,6 +504,31 @@ class ContentPlan extends BaseController
         }
 
         return $this->jsonSukses('Ide berhasil di-generate', ['hasil' => $ide]);
+    }
+
+    /**
+     * POST /dashboard/content-plan/ai-brief
+     * Membuat draft brief / deskripsi ide dengan AI berdasarkan Judul Konten.
+     */
+    public function generateBrief(): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $userId = (int) session('user_id');
+        $judul  = trim((string) $this->request->getPost('judul'));
+        $jenis  = trim((string) $this->request->getPost('jenis'));
+        $pillar = trim((string) $this->request->getPost('pillar'));
+
+        if (empty($judul)) {
+            return $this->jsonGagal('Judul Konten wajib diisi terlebih dahulu.', 422);
+        }
+
+        $ai        = new \App\Services\AiService();
+        $briefBaru = $ai->generateBrief($judul, $jenis, $pillar, $userId);
+
+        if (strpos($briefBaru, 'Fitur AI belum') !== false || strpos($briefBaru, 'Gagal') !== false || strpos($briefBaru, 'kesalahan koneksi') !== false) {
+            return $this->jsonGagal($briefBaru, 500);
+        }
+
+        return $this->jsonSukses('Brief ide berhasil di-generate', ['brief' => $briefBaru]);
     }
 
     /**

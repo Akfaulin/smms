@@ -377,24 +377,61 @@ async function bukaDetail(id) {
         }
     }
 
-    // AI Caption Logic
-    const btnAi = document.getElementById('btnAiCaption');
-    const capEl = document.getElementById('detCaption');
-    if (capEl && btnAi) {
-        if (k.caption) {
-            capEl.innerHTML = escHtml(k.caption).replace(/\n/g, '<br>');
-            btnAi.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generate Ulang AI';
-        } else {
-            capEl.textContent = '(Belum ada caption)';
-            btnAi.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI';
-        }
+    const isReadOnlyMode = window.IS_MANAGER_APPROVAL ||
+                           window.IS_ADMIN_MEDSOS_VIEW ||
+                           (window.ROLE === 'manager' && location.pathname.includes('approval-manager')) ||
+                           (window.ROLE === 'admin_medsos' || location.pathname.includes('jadwal-upload'));
 
-        const roleNow = window.ROLE || '';
-        if (status === 'in_design' && (roleNow === 'content_creator' || OVERRIDE_ROLES.includes(roleNow))) {
-            btnAi.style.display = 'block';
-        } else {
-            btnAi.style.display = 'none';
+    // Caption Logic (Manual Typing & AI Assistance)
+    const btnAi = document.getElementById('btnAiCaption');
+    const inCaptionText = document.getElementById('inCaptionText');
+    const capEl = document.getElementById('detCaption');
+    const btnSimpanCap = document.getElementById('btnSimpanCaption');
+    const statusCaption = document.getElementById('captionStatus');
+
+    if (isReadOnlyMode) {
+        // Read-only inspection mode (Manager & Admin Medsos)
+        if (inCaptionText && inCaptionText.parentElement) {
+            inCaptionText.parentElement.style.display = 'none';
         }
+        if (btnAi) btnAi.style.display = 'none';
+        if (capEl) {
+            capEl.style.display = 'block';
+            if (k.caption) {
+                capEl.innerHTML = escHtml(k.caption).replace(/\n/g, '<br>');
+                capEl.style.color = 'var(--cp-text)';
+                capEl.style.fontSize = '14px';
+                capEl.style.lineHeight = '1.6';
+            } else {
+                capEl.textContent = '(Belum ada caption dari Creator)';
+                capEl.style.color = 'var(--cp-muted)';
+            }
+        }
+    } else {
+        // Editable Mode (Creator / Team)
+        if (inCaptionText) {
+            if (inCaptionText.parentElement) inCaptionText.parentElement.style.display = 'block';
+            inCaptionText.value = k.caption || '';
+        }
+        if (capEl) capEl.style.display = 'none';
+
+        if (btnAi) {
+            btnAi.innerHTML = k.caption
+                ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generate Ulang AI'
+                : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI';
+
+            const roleNow = window.ROLE || '';
+            if (['in_design', 'revisi', 'acc_ide'].includes(status) && (roleNow === 'content_creator' || roleNow === 'creative_team' || OVERRIDE_ROLES.includes(roleNow))) {
+                btnAi.style.display = 'block';
+            } else {
+                btnAi.style.display = 'none';
+            }
+        }
+    }
+
+    if (statusCaption) {
+        statusCaption.style.display = 'none';
+        statusCaption.textContent = '';
     }
 
     // Smart Canva Link Logic
@@ -404,12 +441,18 @@ async function bukaDetail(id) {
 
     if (inDesignUrl) {
         inDesignUrl.value = k.design_url || '';
+        if (isReadOnlyMode && inDesignUrl.parentElement) {
+            inDesignUrl.parentElement.style.display = 'none'; // Hide edit input & simpan button for Read-Only roles
+        } else if (inDesignUrl.parentElement) {
+            inDesignUrl.parentElement.style.display = 'flex';
+        }
     }
 
     if (btnBukaCanva) {
         if (k.design_url && k.design_url.trim() !== '') {
-            // Link tersimpan — aktifkan tombol dan arahkan ke link spesifik
             btnBukaCanva.href = k.design_url;
+            btnBukaCanva.target = '_blank';
+            btnBukaCanva.rel = 'noopener noreferrer';
             btnBukaCanva.removeAttribute('onclick');
             btnBukaCanva.title = 'Buka desain Canva tersimpan';
             btnBukaCanva.style.opacity = '';
@@ -417,9 +460,10 @@ async function bukaDetail(id) {
             btnBukaCanva.style.pointerEvents = '';
             btnBukaCanva.style.filter = '';
         } else {
-            // Belum ada link — disable tombol dan tampilkan toast saat diklik
             btnBukaCanva.removeAttribute('href');
-            btnBukaCanva.setAttribute('onclick', "toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;");
+            btnBukaCanva.removeAttribute('target');
+            btnBukaCanva.removeAttribute('rel');
+            btnBukaCanva.setAttribute('onclick', "toast('Link desain belum diisi oleh Creator.', 'error'); return false;");
             btnBukaCanva.title = 'Link desain belum diisi';
             btnBukaCanva.style.opacity = '0.45';
             btnBukaCanva.style.cursor = 'not-allowed';
@@ -428,8 +472,23 @@ async function bukaDetail(id) {
         }
     }
 
-    // Setup Buka Gambar / Preview Button
+    // Setup Buka Gambar / Preview Button & Image URL field
     const btnBukaGambar = document.getElementById('btnBukaGambar');
+    const inImageUrl = document.getElementById('inImageUrl');
+
+    if (inImageUrl) {
+        inImageUrl.value = k.image_url || '';
+        if (isReadOnlyMode && inImageUrl.parentElement) {
+            inImageUrl.parentElement.style.display = 'none'; // Hide edit input & simpan button for Read-Only roles
+            const noteEl = inImageUrl.parentElement.nextElementSibling;
+            if (noteEl && noteEl.tagName === 'DIV' && noteEl.textContent.includes('Google Drive')) {
+                noteEl.style.display = 'none';
+            }
+        } else if (inImageUrl.parentElement) {
+            inImageUrl.parentElement.style.display = 'flex';
+        }
+    }
+
     if (btnBukaGambar) {
         if (k.image_url && k.image_url.trim() !== '') {
             btnBukaGambar.href = k.image_url;
@@ -443,7 +502,7 @@ async function bukaDetail(id) {
         } else {
             btnBukaGambar.removeAttribute('href');
             btnBukaGambar.removeAttribute('target');
-            btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;");
+            btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi oleh Creator.', 'error'); return false;");
             btnBukaGambar.title = 'Link gambar belum diisi';
             btnBukaGambar.style.opacity = '0.45';
             btnBukaGambar.style.cursor = 'not-allowed';
@@ -459,7 +518,6 @@ async function bukaDetail(id) {
 
     // Reset status element and populate image URL field
     const statusUpload = document.getElementById('uploadImageStatus');
-    const inImageUrl = document.getElementById('inImageUrl');
     if (inImageUrl) inImageUrl.value = k.image_url || '';
 
     if (statusUpload) {
@@ -640,7 +698,11 @@ function renderTimeline(log) {
     }).join('');
 }
 
+let isSubmittingTransisi = false;
+
 async function eksekusiTransisi() {
+    if (isSubmittingTransisi) return;
+
     const statusBaru = document.getElementById('selTransisi').value;
     const catatan    = document.getElementById('txCatatan').value.trim();
     const linkPost   = document.getElementById('inLinkPost').value.trim();
@@ -660,26 +722,33 @@ async function eksekusiTransisi() {
         return;
     }
 
+    isSubmittingTransisi = true;
     const btn = document.getElementById('btnEksekusi');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="cp-spin"></span>`;
+        btn.innerHTML = `<span class="cp-spin"></span> Mengubah Status...`;
     }
 
-    const payload = {
-        status_baru: statusBaru,
-        catatan: catatan,
-        link_postingan: linkPost
-    };
+    try {
+        const payload = {
+            status_baru: statusBaru,
+            catatan: catatan,
+            link_postingan: linkPost
+        };
 
-    const res = await api(`/dashboard/content-plan/transition/${activeContent}`, 'POST', payload);
+        const res = await api(`/dashboard/content-plan/transition/${activeContent}`, 'POST', payload);
 
-    if (res && res.status === 'sukses') {
-        toast(res.pesan, 'success');
-        tutupModal('backDet');
-        setTimeout(() => location.reload(), 700);
-    } else {
-        toast(res ? res.pesan : 'Transisi gagal.', 'error');
+        if (res && res.status === 'sukses') {
+            toast(res.pesan || 'Status konten berhasil diperbarui!', 'success');
+            tutupModal('backDet');
+            setTimeout(() => location.reload(), 500);
+        } else {
+            toast(res ? res.pesan : 'Transisi gagal.', 'error');
+        }
+    } catch (err) {
+        toast('Terjadi kesalahan koneksi saat mengubah status.', 'error');
+    } finally {
+        isSubmittingTransisi = false;
         if (btn) {
             btn.disabled = false;
             btn.textContent = 'Ubah Status';
@@ -714,7 +783,7 @@ async function eksekusiPublishOtomatis() {
     }
 }
 
-// ─── AI Caption Assistant ─────────────────────────────────
+// ─── AI & Manual Caption Assistant ─────────────────────────
 
 async function generateAiCaption() {
     if (!activeContent) return;
@@ -736,14 +805,80 @@ async function generateAiCaption() {
 
     if (res.status === 'sukses') {
         toast('Caption AI berhasil dibuat!', 'success');
+        const inCaptionText = document.getElementById('inCaptionText');
         const capEl = document.getElementById('detCaption');
+        if (inCaptionText) inCaptionText.value = res.data.caption;
         if (capEl) capEl.innerHTML = escHtml(res.data.caption).replace(/\n/g, '<br>');
+        
+        // Update local memory state
+        const allKonten = window.ALL_KONTEN || [];
+        const item = allKonten.find(x => x.id == activeContent);
+        if (item) item.caption = res.data.caption;
+
         if (btn) btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generate Ulang AI';
     } else {
         toast(res.pesan || 'Gagal generate caption.', 'error');
         if (btn) btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI';
     }
     if (btn) btn.disabled = false;
+}
+
+async function simpanCaptionManual() {
+    if (!activeContent) return;
+    const inCaptionText = document.getElementById('inCaptionText');
+    const btn = document.getElementById('btnSimpanCaption');
+    const statusEl = document.getElementById('captionStatus');
+
+    const captionVal = (inCaptionText?.value || '').trim();
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Menyimpan...';
+    }
+
+    try {
+        const csrfToken = (typeof getCsrfToken === 'function' ? getCsrfToken() : (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''));
+        const response = await fetch('/dashboard/content-plan/update-caption/' + activeContent, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: 'caption=' + encodeURIComponent(captionVal)
+        });
+
+        const res = await response.json();
+
+        if (res.status === 'sukses') {
+            toast('Caption berhasil disimpan!', 'success');
+            if (statusEl) {
+                statusEl.style.display = 'block';
+                statusEl.textContent = captionVal ? '✓ Caption tersimpan' : '✓ Caption telah dihapus';
+                setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+            }
+            // Update local memory state
+            const allKonten = window.ALL_KONTEN || [];
+            const item = allKonten.find(x => x.id == activeContent);
+            if (item) item.caption = captionVal;
+
+            const btnAi = document.getElementById('btnAiCaption');
+            if (btnAi) {
+                btnAi.innerHTML = captionVal
+                    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generate Ulang AI'
+                    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI';
+            }
+        } else {
+            toast(res.pesan || 'Gagal menyimpan caption.', 'error');
+        }
+    } catch (err) {
+        toast('Terjadi kesalahan koneksi saat menyimpan caption.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Simpan Caption';
+        }
+    }
 }
 
 // ─── Save Design URL (Canva / Figma Link) ─────────────────
@@ -779,6 +914,8 @@ async function simpanDesignUrl() {
             if (designUrl) {
                 // Link baru disimpan — aktifkan tombol
                 btnBukaCanva.href = designUrl;
+                btnBukaCanva.target = '_blank';
+                btnBukaCanva.rel = 'noopener noreferrer';
                 btnBukaCanva.removeAttribute('onclick');
                 btnBukaCanva.title = 'Buka desain Canva tersimpan';
                 btnBukaCanva.style.opacity = '';
@@ -788,6 +925,8 @@ async function simpanDesignUrl() {
             } else {
                 // Link dihapus — disable tombol kembali
                 btnBukaCanva.removeAttribute('href');
+                btnBukaCanva.removeAttribute('target');
+                btnBukaCanva.removeAttribute('rel');
                 btnBukaCanva.setAttribute('onclick', "toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;");
                 btnBukaCanva.title = 'Link desain belum diisi';
                 btnBukaCanva.style.opacity = '0.45';
@@ -998,4 +1137,62 @@ async function generateAiIdeas() {
         btn.textContent = '✨ Generate Ide Konten';
     }
 }
+
+// ─── AI Brief Generator ───────────────────────────────────────────────────
+
+async function generateAiBrief() {
+    const judulInput  = document.getElementById('fJudul');
+    const descInput   = document.getElementById('fDesc');
+    const jenisInput  = document.getElementById('fJenis');
+    const pillarInput = document.getElementById('fPillar');
+    const btn         = document.getElementById('btnAiBrief');
+
+    const judul  = (judulInput?.value || '').trim();
+    const jenis  = (jenisInput && jenisInput.selectedIndex >= 0) ? jenisInput.options[jenisInput.selectedIndex].text : '';
+    const pillar = (pillarInput && pillarInput.selectedIndex >= 0) ? pillarInput.options[pillarInput.selectedIndex].text : '';
+
+    if (!judul) {
+        toast('Silakan isi Judul Konten terlebih dahulu.', 'error');
+        if (judulInput) judulInput.focus();
+        return;
+    }
+
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px; margin-right:3px; animation:spin 1s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generating...`;
+    }
+
+    try {
+        const csrfToken = (typeof getCsrfToken === 'function' ? getCsrfToken() : (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''));
+        const response = await fetch('/dashboard/content-plan/ai-brief', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: 'judul=' + encodeURIComponent(judul) + '&jenis=' + encodeURIComponent(jenis) + '&pillar=' + encodeURIComponent(pillar)
+        });
+
+        const res = await response.json();
+
+        if (res.status === 'sukses' && res.data && res.data.brief) {
+            if (descInput) {
+                descInput.value = res.data.brief;
+            }
+            toast('Brief ide berhasil di-generate AI!', 'success');
+        } else {
+            toast(res.pesan || 'Gagal membuat brief AI.', 'error');
+        }
+    } catch (err) {
+        toast('Terjadi kesalahan koneksi saat membuat brief AI.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml || `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px; margin-right:3px;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Brief AI`;
+        }
+    }
+}
+
 

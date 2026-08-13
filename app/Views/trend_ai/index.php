@@ -238,7 +238,13 @@
 
             <div class="cp-row full" style="margin-bottom:16px;">
                 <div class="cp-field">
-                    <label style="font-size:12.5px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Deskripsi / Brief Ide</label>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="font-size:12.5px; font-weight:700; color:#374151; margin:0;">Deskripsi / Brief Ide</label>
+                        <button type="button" class="cpb cpb-sec" id="btnAiBrief" style="padding:4px 10px; font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; gap:4px; border-radius:6px; background:#e0f2fe; border:1px solid #bae6fd; color:#0284c7;" onclick="generateAiBrief()" title="Bantu tulis brief otomatis dengan AI berdasarkan Judul Konten">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                            Bantu Tulis Brief AI
+                        </button>
+                    </div>
                     <textarea id="fDesc" class="cp-inp" placeholder="Tulis deskripsi singkat ide, poin penting, atau konsep visual..." rows="3" style="padding:10px 14px; min-height:85px;"></textarea>
                 </div>
             </div>
@@ -287,7 +293,8 @@ function generateTrendHook() {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': (typeof getCsrfToken === 'function' ? getCsrfToken() : (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''))
         },
         body: 'topik=' + encodeURIComponent(topik) + '&platform=' + encodeURIComponent(platform)
     })
