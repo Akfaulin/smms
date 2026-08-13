@@ -17,7 +17,7 @@ class AiService
             'baseURI' => 'https://generativelanguage.googleapis.com',
             'timeout' => 30,
         ]);
-        
+
         // Kita ambil dari getenv, jika kosong berarti fitur AI dimatikan/belum dikonfigurasi
         $this->apiKey = getenv('GEMINI_API_KEY');
         $this->logModel = new AiGenerationLogModel();
@@ -50,7 +50,7 @@ class AiService
 
         try {
             $response = $this->client->post($url, [
-                'json'    => $payload,
+                'json' => $payload,
                 'headers' => ['Content-Type' => 'application/json'],
                 'http_errors' => false // agar bisa nangkep pesan error API
             ]);
@@ -79,12 +79,12 @@ class AiService
     protected function logUsage(?int $contentId, ?int $userId, string $fitur, string $prompt, string $output)
     {
         $this->logModel->insert([
-            'content_id'   => ($contentId && $contentId > 0) ? $contentId : null,
-            'user_id'      => ($userId && $userId > 0) ? $userId : null,
-            'fitur'        => $fitur,
+            'content_id' => ($contentId && $contentId > 0) ? $contentId : null,
+            'user_id' => ($userId && $userId > 0) ? $userId : null,
+            'fitur' => $fitur,
             'prompt_input' => $prompt,
-            'output'       => $output,
-            'created_at'   => date('Y-m-d H:i:s'),
+            'output' => $output,
+            'created_at' => date('Y-m-d H:i:s'),
         ]);
     }
 
@@ -119,7 +119,7 @@ class AiService
     {
         // Fitur AI belum jalan kalau API Key kosong
         if (empty($this->apiKey)) {
-            return; 
+            return;
         }
 
         $judul = $konten['judul_konten'];
@@ -136,27 +136,41 @@ class AiService
 
         // Jika output bukan pesan error
         if (strpos($output, 'Fitur AI belum') === false && strpos($output, 'Gagal memanggil API') === false && strpos($output, 'kesalahan koneksi') === false) {
-            
+
             // Catat di ai_generation_log
             $this->logUsage($konten['id'], 0, 'prereview', $prompt, $output); // 0 = Sistem
 
             // Catat di content_status_log sebagai catatan sistem
             $statusLog = new ContentStatusLogModel();
             $statusLog->insert([
-                'content_id'  => $konten['id'],
+                'content_id' => $konten['id'],
                 'status_lama' => 'in_design', // karena AI ini nge-trigger pas masuk review_design
                 'status_baru' => 'review_design',
-                'user_id'     => null, // Sistem
-                'catatan'     => "[AI Pre-Review Checklist]\n" . $output,
-                'created_at'  => date('Y-m-d H:i:s'),
+                'user_id' => null, // Sistem
+                'catatan' => "[AI Pre-Review Checklist]\n" . $output,
+                'created_at' => date('Y-m-d H:i:s'),
             ]);
         }
     }
 
     // =========================================================================
+    // FITUR: AI VIRAL HOOK GENERATOR
+    // =========================================================================
+    public function generateHook(string $topik, string $platform, ?int $userId = null): string
+    {
+        $prompt = "Buatkan 3 contoh kalimat pembuka (Viral Hook) yang sangat menarik untuk konten {$platform} dengan topik: \"{$topik}\". Berikan format 1, 2, 3 yang singkat dan siap pakai.";
+
+        $output = $this->callGemini($prompt);
+
+        $this->logUsage(null, $userId, 'hook_gen', $prompt, $output);
+
+        return trim($output);
+    }
+
+    // =========================================================================
     // FITUR 9.1: AI IDEA GENERATOR
     // =========================================================================
-    public function generateIdeas(string $topik, string $platform, int $userId): string
+    public function generateIdeas(string $topik, string $platform, ?int $userId = null): string
     {
         $prompt = "Kamu adalah Strategis Konten Media Sosial berpengalaman. Tolong berikan 3 ide konten kreatif untuk platform {$platform} berdasarkan topik/produk: \"{$topik}\".\n\n";
         $prompt .= "Untuk setiap ide, berikan:\n";
