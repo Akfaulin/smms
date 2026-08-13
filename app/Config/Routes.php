@@ -53,7 +53,9 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->post('approval-manager/ai-caption/(:num)', 'ApprovalManager::aiCaption/$1');
     $routes->get('jadwal-upload', 'JadwalUpload::index');
     $routes->post('jadwal-upload/publish/(:num)', 'JadwalUpload::publish/$1');
+    $routes->post('jadwal-upload/publish-otomatis/(:num)', 'JadwalUpload::publishOtomatis/$1');
     $routes->get('kalender-tayang', 'KalenderTayang::index');
+
 
     $routes->get('content-plan', 'ContentPlan::index');
     $routes->post('content-plan/store', 'ContentPlan::store');
@@ -67,6 +69,7 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->post('content-plan/ai-caption/(:num)', 'ContentPlan::generateCaption/$1');
     $routes->post('content-plan/ai-ideas', 'ContentPlan::generateIdeas');
     $routes->post('content-plan/design-url/(:num)', 'ContentPlan::updateDesignUrl/$1');
+    $routes->post('content-plan/image-url/(:num)', 'ContentPlan::updateImageUrl/$1');
     $routes->post('content-plan/upload-image/(:num)', 'ContentPlan::uploadImage/$1');
 
     // Riwayat status & catatan (untuk timeline modal — Tahap 3)

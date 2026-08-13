@@ -378,7 +378,7 @@ class ContentPlan extends BaseController
      */
     public function log(int $id): \CodeIgniter\HTTP\ResponseInterface
     {
-        $konten = $this->model->find($id);
+        $konten = $this->model->withRelasi()->find($id);
         if (! $konten) {
             return $this->jsonGagal('Konten tidak ditemukan.', 404);
         }
@@ -399,6 +399,7 @@ class ContentPlan extends BaseController
             'judul_konten' => $konten['judul_konten'],
             'status'       => $konten['status'],
             'log'          => $log,
+            'konten'       => $konten,
         ]);
     }
 
@@ -509,6 +510,54 @@ class ContentPlan extends BaseController
         ]);
 
         return $this->jsonSukses('Link desain berhasil disimpan.', ['design_url' => $designUrl]);
+    }
+
+    /**
+     * POST /dashboard/content-plan/image-url/{id}
+     * Simpan / update URL gambar konten (Google Drive link atau URL publik langsung).
+     * Link Drive otomatis dikonversi ke format direct-access oleh GraphApiService::convertDriveLink().
+     */
+    public function updateImageUrl(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $kodeRole = session('kode_role');
+        $konten   = $this->model->find($id);
+
+        if (! $konten) {
+            return $this->jsonGagal('Konten tidak ditemukan.', 404);
+        }
+
+        if (! in_array($kodeRole, ['content_creator', 'creative_team', 'admin_medsos', 'manager', 'superadmin', 'owner'], true)) {
+            return $this->jsonGagal('Anda tidak berwenang mengubah gambar konten.', 403);
+        }
+
+        // Support both POST form data and JSON payload
+        $postVal = $this->request->getPost('image_url') ?? $this->request->getVar('image_url');
+        if ($postVal !== null) {
+            $imageUrl = (string) $postVal;
+        } else {
+            $json     = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON(true) : [];
+            $imageUrl = (string) ($json['image_url'] ?? '');
+        }
+        $imageUrl = trim($imageUrl);
+
+        // Validasi format URL jika tidak kosong
+        if (! empty($imageUrl) && ! filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+            return $this->jsonGagal('Format URL tidak valid (harus diawali http:// atau https://).', 422);
+        }
+
+        // Konversi Google Drive share link → direct-access URL sebelum disimpan
+        if (! empty($imageUrl)) {
+            $graphService = new \App\Services\GraphApiService();
+            $imageUrl = $graphService->convertDriveLink($imageUrl);
+        }
+
+        $this->model->protect(false)->update($id, [
+            'image_url'  => $imageUrl ?: null,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        $this->model->protect(true);
+
+        return $this->jsonSukses('Link gambar berhasil disimpan.', ['image_url' => $imageUrl]);
     }
 
     /**

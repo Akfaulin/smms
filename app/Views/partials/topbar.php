@@ -79,6 +79,18 @@
 
     <div class="topbar-right">
         <?= $topbar_right ?? '' ?>
+        <!-- Drive Shortcut Button -->
+        <a href="https://drive.google.com/drive/folders/1rRL56Yo9O041wMZSMz2g3vlG15l4lMKp?usp=sharing" 
+           target="_blank" 
+           class="drive-hdr-btn" 
+           title="Buka Google Drive Workspace">
+            <svg viewBox="0 0 360 360" width="16" height="16" style="flex-shrink: 0;">
+                <path fill="#0066da" d="M127.3 264.4L180 360h105.4L232.7 264.4H127.3z"/>
+                <path fill="#00a85d" d="M52.7 264.4L0 360l52.7-95.6L105.4 173h105.4L158.1 264.4H52.7z"/>
+                <path fill="#ffbb00" d="M158.1 82.5L105.4 173l52.7 91.4L210.8 173h105.4L263.5 82.5H158.1z"/>
+            </svg>
+            <span>Drive</span>
+        </a>
         <!-- Notifikasi Bell -->
         <div class="notif-wrap" id="notifWrap">
             <button type="button" class="notif-btn" id="notifBtn" onclick="toggleNotifDropdown()" title="Notifikasi">
@@ -290,6 +302,34 @@
 .business-item-check {
     color: #2563eb;
     flex-shrink: 0;
+}
+
+/* Drive Header Button Shortcut */
+.drive-hdr-btn {
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition: background .18s, border-color .18s, color .18s;
+    box-sizing: border-box;
+}
+.drive-hdr-btn:hover {
+    background: var(--accent-light);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.drive-hdr-btn span {
+    line-height: 1;
 }
 </style>
 

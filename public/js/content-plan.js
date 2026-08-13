@@ -348,9 +348,10 @@ async function bukaDetail(id) {
     const res = await api(`/dashboard/content-plan/${id}/log`);
     if (res.status !== 'sukses') { toast('Gagal memuat data.', 'error'); return; }
 
-    const { judul_konten, status, log } = res.data;
+    const { judul_konten, status, log, konten } = res.data;
     const allKonten = window.ALL_KONTEN || [];
-    const k = allKonten.find(x => x.id == id) || {};
+    const k = konten || allKonten.find(x => x.id == id) || {};
+
 
     // Header modal
     if (detJudul) detJudul.textContent = judul_konten;
@@ -427,30 +428,40 @@ async function bukaDetail(id) {
         }
     }
 
+    // Setup Buka Gambar / Preview Button
+    const btnBukaGambar = document.getElementById('btnBukaGambar');
+    if (btnBukaGambar) {
+        if (k.image_url && k.image_url.trim() !== '') {
+            btnBukaGambar.href = k.image_url;
+            btnBukaGambar.target = '_blank';
+            btnBukaGambar.removeAttribute('onclick');
+            btnBukaGambar.title = 'Buka gambar di tab baru';
+            btnBukaGambar.style.opacity = '';
+            btnBukaGambar.style.cursor = '';
+            btnBukaGambar.style.pointerEvents = '';
+            btnBukaGambar.style.filter = '';
+        } else {
+            btnBukaGambar.removeAttribute('href');
+            btnBukaGambar.removeAttribute('target');
+            btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;");
+            btnBukaGambar.title = 'Link gambar belum diisi';
+            btnBukaGambar.style.opacity = '0.45';
+            btnBukaGambar.style.cursor = 'not-allowed';
+            btnBukaGambar.style.pointerEvents = 'auto';
+            btnBukaGambar.style.filter = 'grayscale(0.7)';
+        }
+    }
+
     if (statusDesignUrl) {
         statusDesignUrl.style.display = 'none';
         statusDesignUrl.textContent = '';
     }
 
-    // Media Image Preview Handling
-    const imgPreview = document.getElementById('imgPreview');
-    const imgPreviewEmpty = document.getElementById('imgPreviewEmpty');
+    // Reset status element and populate image URL field
     const statusUpload = document.getElementById('uploadImageStatus');
-    const fileInput = document.getElementById('inImageFile');
+    const inImageUrl = document.getElementById('inImageUrl');
+    if (inImageUrl) inImageUrl.value = k.image_url || '';
 
-    if (fileInput) fileInput.value = '';
-
-    if (imgPreview && imgPreviewEmpty) {
-        if (k.image_url) {
-            imgPreview.src = k.image_url;
-            imgPreview.style.display = 'block';
-            imgPreviewEmpty.style.display = 'none';
-        } else {
-            imgPreview.src = '';
-            imgPreview.style.display = 'none';
-            imgPreviewEmpty.style.display = 'block';
-        }
-    }
     if (statusUpload) {
         statusUpload.style.display = 'none';
         statusUpload.textContent = '';
@@ -458,15 +469,34 @@ async function bukaDetail(id) {
 
     // Transition box
     const tersedia = getTransisiTersedia(status);
+    const namaJenis = (k.nama_jenis || '').toLowerCase();
+    const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
+
+    // Auto Publish Box handling
+    const autoPublishBox = document.getElementById('autoPublishBox');
+    if (autoPublishBox) {
+        if (isFoto && k.image_url && status !== 'published') {
+            autoPublishBox.style.display = 'block';
+        } else {
+            autoPublishBox.style.display = 'none';
+        }
+    }
+
     if (txBox) {
-        if (tersedia.length > 0) {
+        // Filter out 'published' from transition group if it's a Foto/Static Post content
+        let filteredTersedia = tersedia;
+        if (isFoto) {
+            filteredTersedia = tersedia.filter(s => s !== 'published');
+        }
+
+        if (filteredTersedia.length > 0) {
             txBox.style.display = '';
             const selInput = document.getElementById('selTransisi');
             if (selInput) selInput.value = '';
 
             const btnContainer = document.getElementById('statusBtnContainer');
             if (btnContainer) {
-                btnContainer.innerHTML = tersedia.map(s => {
+                btnContainer.innerHTML = filteredTersedia.map(s => {
                     const label = STATUS_LABEL[s] || s;
                     const icon = getStatusIcon(s);
                     const styleClass = getStatusBtnClass(s);
@@ -483,6 +513,7 @@ async function bukaDetail(id) {
             txBox.style.display = 'none';
         }
     }
+
 
     // Timeline
     renderTimeline(log);
@@ -656,7 +687,35 @@ async function eksekusiTransisi() {
     }
 }
 
+async function eksekusiPublishOtomatis() {
+    if (!activeContent) return;
+    const btn = document.getElementById('btnAutoPublish');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:14px;height:14px;border-width:2.5px;"></span> Publishing...`;
+    }
+
+    const res = await api(`/dashboard/jadwal-upload/publish-otomatis/${activeContent}`, 'POST');
+
+    if (res && res.status === 'sukses') {
+        let msg = 'Berhasil mempublikasikan konten ke Instagram!';
+        if (res.warning) {
+            msg += '\n\n' + res.warning;
+        }
+        toast(msg, 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 1000);
+    } else {
+        toast(res ? res.pesan : 'Publish otomatis gagal.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `🚀 Publish ke Instagram Sekarang (Otomatis)`;
+        }
+    }
+}
+
 // ─── AI Caption Assistant ─────────────────────────────────
+
 async function generateAiCaption() {
     if (!activeContent) return;
     const btn = document.getElementById('btnAiCaption');
@@ -753,63 +812,84 @@ async function simpanDesignUrl() {
     }
 }
 
-// ─── Upload Media Gambar Publik ─────────────────────────────
-async function uploadGambarKonten() {
-    if (!activeContent) return;
-    const fileInput = document.getElementById('inImageFile');
-    const btn = document.getElementById('btnUploadImage');
-    const statusEl = document.getElementById('uploadImageStatus');
-    const imgPreview = document.getElementById('imgPreview');
-    const imgPreviewEmpty = document.getElementById('imgPreviewEmpty');
 
-    const file = fileInput?.files?.[0];
-    if (!file) {
-        toast('Pilih file gambar terlebih dahulu.', 'error');
-        return;
-    }
+
+// ─── Save Image URL (Google Drive Link or Public URL) ─────────────────
+async function simpanImageUrl() {
+    if (!activeContent) return;
+    const inUrl    = document.getElementById('inImageUrl');
+    const btn      = document.getElementById('btnSimpanImageUrl');
+    const statusEl = document.getElementById('uploadImageStatus');
+
+    const imageUrl = (inUrl?.value || '').trim();
 
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Uploading...`;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
     }
 
     const fd = new FormData();
-    fd.append('image_file', file);
+    fd.append('image_url', imageUrl);
 
-    const res = await api(`/dashboard/content-plan/upload-image/${activeContent}`, 'POST', fd);
+    const res = await api(`/dashboard/content-plan/image-url/${activeContent}`, 'POST', fd);
 
     if (res && res.status === 'sukses') {
-        toast('Gambar konten berhasil diunggah!', 'success');
+        const savedUrl = res.data.image_url || '';
+        toast('Link gambar berhasil disimpan!', 'success');
 
-        const imageUrl = res.data.image_url;
-
-        // Update in-memory window.ALL_KONTEN array
+        // Update in-memory cache
         const allKonten = window.ALL_KONTEN || [];
         const item = allKonten.find(x => x.id == activeContent);
-        if (item) {
-            item.image_url = imageUrl;
-        }
-
-        if (imgPreview && imgPreviewEmpty) {
-            imgPreview.src = imageUrl;
-            imgPreview.style.display = 'block';
-            imgPreviewEmpty.style.display = 'none';
-        }
+        if (item) item.image_url = savedUrl;
 
         if (statusEl) {
+            const isDrive = savedUrl.includes('drive.google.com/uc');
             statusEl.style.display = 'block';
-            statusEl.textContent = '✓ Media gambar tersimpan (Siap untuk Publishing Meta API)';
+            statusEl.textContent = savedUrl
+                ? '✓ Link gambar tersimpan' + (isDrive ? ' (Drive link dikonversi ✓)' : '')
+                : '✓ Link gambar telah dihapus';
             setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
         }
 
-        if (fileInput) fileInput.value = '';
+        // Refresh tombol auto-publish visibility
+        const autoPublishBox = document.getElementById('autoPublishBox');
+        if (autoPublishBox) {
+            const cachedItem = (window.ALL_KONTEN || []).find(x => x.id == activeContent);
+            const namaJenis = (cachedItem?.nama_jenis || '').toLowerCase();
+            const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
+            autoPublishBox.style.display = (isFoto && savedUrl) ? 'block' : 'none';
+        }
+
+        // Update Buka Gambar / Preview Button state
+        const btnBukaGambar = document.getElementById('btnBukaGambar');
+        if (btnBukaGambar) {
+            if (savedUrl) {
+                btnBukaGambar.href = savedUrl;
+                btnBukaGambar.target = '_blank';
+                btnBukaGambar.removeAttribute('onclick');
+                btnBukaGambar.title = 'Buka gambar di tab baru';
+                btnBukaGambar.style.opacity = '';
+                btnBukaGambar.style.cursor = '';
+                btnBukaGambar.style.pointerEvents = '';
+                btnBukaGambar.style.filter = '';
+            } else {
+                btnBukaGambar.removeAttribute('href');
+                btnBukaGambar.removeAttribute('target');
+                btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;");
+                btnBukaGambar.title = 'Link gambar belum diisi';
+                btnBukaGambar.style.opacity = '0.45';
+                btnBukaGambar.style.cursor = 'not-allowed';
+                btnBukaGambar.style.pointerEvents = 'auto';
+                btnBukaGambar.style.filter = 'grayscale(0.7)';
+            }
+        }
     } else {
-        toast(res ? res.pesan : 'Gagal mengunggah gambar.', 'error');
+        toast(res ? res.pesan : 'Gagal menyimpan link gambar.', 'error');
     }
 
     if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Upload Gambar';
+        btn.textContent = 'Simpan Link Gambar';
     }
 }
 
