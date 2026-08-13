@@ -154,9 +154,28 @@ class AiService
     }
 
     // =========================================================================
+    // FITUR: AI HOOK GENERATOR
+    // =========================================================================
+    public function generateHooks(string $topik, string $platform, int $userId = 0): string
+    {
+        $prompt = "Kamu adalah Strategis Konten Media Sosial berpengalaman. Tolong buatkan 5 contoh kalimat pembuka (Viral Hook 3 detik pertama) yang sangat menarik dan terbukti efektif untuk konten {$platform} berdasarkan topik/produk: \"{$topik}\".\n\n";
+        $prompt .= "Untuk setiap hook, berikan:\n";
+        $prompt .= "1. Kalimat Hook (Viral Opening)\n";
+        $prompt .= "2. Tipe Hook (misal: Curiosity, Fear of Missing Out, Problem-Solving, Bold Statement)\n";
+        $prompt .= "3. Alasan singkat kenapa hook ini efektif\n\n";
+        $prompt .= "Format output dengan rapi, singkat, dan siap pakai.";
+
+        $output = $this->callGemini($prompt);
+
+        $this->logUsage(null, $userId, 'hook_gen', $prompt, $output);
+
+        return trim($output);
+    }
+
+    // =========================================================================
     // FITUR 9.1: AI IDEA GENERATOR
     // =========================================================================
-    public function generateIdeas(string $topik, string $platform, int $userId): string
+    public function generateIdeas(string $topik, string $platform, int $userId = 0): string
     {
         $prompt = "Kamu adalah Strategis Konten Media Sosial berpengalaman. Tolong berikan 3 ide konten kreatif untuk platform {$platform} berdasarkan topik/produk: \"{$topik}\".\n\n";
         $prompt .= "Untuk setiap ide, berikan:\n";
@@ -170,6 +189,36 @@ class AiService
         $this->logUsage(null, $userId, 'idea_gen', $prompt, $output);
 
         return trim($output);
+    }
+
+    // =========================================================================
+    // FITUR: AI BRIEF GENERATOR
+    // =========================================================================
+    public function generateBrief(string $judul, string $jenis = '', string $pillar = '', int $userId = 0): string
+    {
+        $prompt = "Kamu adalah Strategis Konten & Creative Director Media Sosial. Tolong buatkan deskripsi / brief ide singkat dan jelas untuk sebuah ide konten dengan detail berikut:\n\n";
+        $prompt .= "- Judul / Topik Konten: \"{$judul}\"\n";
+        if (! empty($jenis))  { $prompt .= "- Format / Jenis Konten: {$jenis}\n"; }
+        if (! empty($pillar)) { $prompt .= "- Content Pillar: {$pillar}\n"; }
+        $prompt .= "\nTuliskan brief ide yang praktis untuk Designer & Copywriter yang mencakup:\n";
+        $prompt .= "1. Konsep Visual & Angle Konten\n";
+        $prompt .= "2. Poin Utama Pesan / Poin Diskusi\n";
+        $prompt .= "3. Output / Call to Action (CTA) singkat\n\n";
+        $prompt .= "PENTING ATURAN FORMATTING:\n";
+        $prompt .= "- JANGAN gunakan simbol markdown sama sekali seperti bintang-bintang (** atau *), pagar (###), atau garis pembatas (---).\n";
+        $prompt .= "- Gunakan format teks polos (plain text) yang rapi, berpenomoran (1, 2, 3), serta simbol bullet sederhana (- atau •) agar bersih saat dibaca di dalam kolom input teks (textarea).\n";
+        $prompt .= "- Tulis langsung ke inti brief tanpa kata pembuka informal.";
+
+        $output = $this->callGemini($prompt);
+
+        // Pembersihan otomatis agar tidak ada karakter markdown tersisa di textarea
+        $cleanOutput = preg_replace('/[\*#_]{1,3}/', '', $output);
+        $cleanOutput = preg_replace('/^\s*[-─_]{3,}\s*$/m', '', $cleanOutput);
+        $cleanOutput = trim(preg_replace("/\n{3,}/", "\n\n", $cleanOutput));
+
+        $this->logUsage(null, $userId, 'brief_gen', $prompt, $cleanOutput);
+
+        return $cleanOutput;
     }
 }
 

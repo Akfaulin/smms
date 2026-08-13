@@ -126,9 +126,15 @@ class TransisiKonten
         $kodeRole   = $userRow['kode_role'] ?? null;
         $statusLama = $konten['status'];
 
-        // 3. Jika sudah sama, tidak perlu transisi
+        // 3. Jika sudah sama, perlakukan sebagai respon sukses (idempotent / cegah error double click)
         if ($statusLama === $statusBaru) {
-            return $this->gagal("Status konten sudah '{$statusBaru}', tidak ada perubahan.");
+            return [
+                'ok'          => true,
+                'pesan'       => "Konten sudah berada di status '" . self::labelStatus($statusBaru) . "'.",
+                'kode_role'   => $kodeRole,
+                'status_lama' => $statusLama,
+                'status_baru' => $statusBaru,
+            ];
         }
 
         // 4. Cek apakah ini transisi standar yang terdaftar di TRANSISI_VALID
@@ -198,6 +204,15 @@ class TransisiKonten
         }
 
         $statusLama = $cek['status_lama'];
+
+        if ($statusLama === $statusBaru) {
+            return [
+                'ok'          => true,
+                'pesan'       => "Konten sudah berstatus '" . self::labelStatus($statusBaru) . "'.",
+                'status_lama' => $statusLama,
+                'status_baru' => $statusBaru,
+            ];
+        }
 
         $db = \Config\Database::connect();
         $db->transStart();

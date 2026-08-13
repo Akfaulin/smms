@@ -215,18 +215,26 @@ $roleNow = $kode_role ?? session('kode_role');
             </div>
             <div class="cp-det-desc" id="detDesc" style="display:none;margin-top:16px;"></div>
 
-            <!-- AI Caption Box -->
+            <!-- AI & Manual Caption Box -->
             <div class="cp-caption-box" id="captionBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
                     <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                         Caption Konten
                     </div>
-                    <button class="cpb cpb-pri" id="btnAiCaption" style="padding:6px 12px; font-size:12px; display:none;" onclick="generateAiCaption()">
+                    <button type="button" class="cpb cpb-sec" id="btnAiCaption" style="padding:6px 12px; font-size:12px; display:none; background:#f0f9ff; border:1px solid #bae6fd; color:#0284c7; font-weight:600; border-radius:8px;" onclick="generateAiCaption()">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI
                     </button>
                 </div>
-                <div id="detCaption" style="font-size:14px; color:var(--cp-muted); white-space:pre-wrap;">(Belum ada caption)</div>
+                <div>
+                    <textarea id="inCaptionText" class="cp-inp" rows="4" placeholder="Tulis caption manual atau gunakan bantuan AI di atas..." style="width:100%; font-size:13.5px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:90px;"></textarea>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                        <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none;"></div>
+                        <button type="button" class="cpb cpb-pri" id="btnSimpanCaption" onclick="simpanCaptionManual()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
+                            Simpan Caption
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Link Desain Canva Box -->
@@ -236,7 +244,7 @@ $roleNow = $kode_role ?? session('kode_role');
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c4cc" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
                         Link Desain Canva / Figma
                     </div>
-                    <a id="btnBukaCanva" class="cpb cpb-sec" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link desain belum diisi" onclick="toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;">
+                    <a id="btnBukaCanva" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link desain belum diisi" onclick="toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                         Buka Canva ↗
                     </a>

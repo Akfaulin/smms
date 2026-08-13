@@ -95,10 +95,10 @@ class TrendAi extends BaseController
             ])->setStatusCode(400);
         }
 
-        $prompt = "Buatkan 3 contoh kalimat pembuka (Viral Hook) yang sangat menarik untuk konten {$platform} dengan topik: \"{$topik}\". Berikan format 1, 2, 3 yang singkat dan siap pakai.";
+        $userId = (int) session('user_id');
 
         try {
-            $hasilAi = $this->aiService->generateIdeas($topik, $platform);
+            $hasilAi = $this->aiService->generateHooks($topik, $platform, $userId);
             return $this->response->setJSON([
                 'sukses' => true,
                 'data'   => $hasilAi,
