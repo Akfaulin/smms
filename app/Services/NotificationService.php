@@ -143,4 +143,39 @@ class NotificationService
                 break;
         }
     }
+
+    /**
+     * Kirim notifikasi saat auto-publish berhasil dieksekusi oleh scheduler background
+     */
+    public function notifikasiAutoPublishSukses(array $konten): void
+    {
+        $judul = $konten['judul_konten'] ?? 'Konten';
+        $url   = '/dashboard/jadwal-upload';
+
+        $this->kirimKeRole('admin_medsos', 'Auto-Publish Berhasil', "Konten \"{$judul}\" berhasil dipublish otomatis ke media sosial sesuai jadwal.", $url);
+        $this->kirimKeRole('manager', 'Auto-Publish Berhasil', "Konten \"{$judul}\" telah dipublish secara otomatis.", $url);
+        $this->kirimKeRole('owner', 'Auto-Publish Berhasil', "Konten \"{$judul}\" telah dipublish secara otomatis.", $url);
+
+        $dibuatOleh = (int) ($konten['dibuat_oleh'] ?? 0);
+        if ($dibuatOleh > 0) {
+            $this->kirim($dibuatOleh, 'Konten Terbit Otomatis!', "Konten \"{$judul}\" yang kamu buat telah berhasil dipublish otomatis.", $url);
+        }
+    }
+
+    /**
+     * Kirim notifikasi saat auto-publish gagal dieksekusi oleh background scheduler
+     */
+    public function notifikasiAutoPublishGagal(array $konten, string $alasanGagal, int $attempt): void
+    {
+        $judul = $konten['judul_konten'] ?? 'Konten';
+        $url   = '/dashboard/jadwal-upload';
+
+        $pesan = "Auto-publish gagal untuk konten \"{$judul}\" (Percobaan {$attempt}/3). Error: {$alasanGagal}";
+        if ($attempt >= 3) {
+            $pesan = "⚠️ PERHATIAN: Auto-publish gagal setelah 3x percobaan pada konten \"{$judul}\". Perlu review manual di menu Jadwal Upload. Error: {$alasanGagal}";
+        }
+
+        $this->kirimKeRole('admin_medsos', 'Gagal Auto-Publish Konten', $pesan, $url);
+        $this->kirimKeRole('manager', 'Gagal Auto-Publish Konten', $pesan, $url);
+    }
 }

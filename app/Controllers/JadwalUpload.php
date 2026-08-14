@@ -428,6 +428,157 @@ class JadwalUpload extends BaseController
             ]);
         }
     }
+
+    /**
+     * POST /dashboard/jadwal-upload/atur-jadwal/{id}
+     * Simpan / atur tanggal dan jam publish otomatis untuk konten acc_final.
+     */
+    public function aturJadwal(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role   = session('kode_role');
+        $userId = (int) session('user_id');
+
+        if (! in_array($role, ['admin_medsos', 'superadmin', 'owner', 'manager'], true)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Anda tidak memiliki hak akses untuk mengatur jadwal publish.',
+            ]);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ]);
+        }
+
+        if ($konten['status'] !== 'acc_final') {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Hanya konten dengan status Acc Final yang dapat dijadwalkan auto-publish.',
+            ]);
+        }
+
+        $tanggal = trim($this->request->getPost('tanggal_publish') ?? '');
+        $jam     = trim($this->request->getPost('jam_publish') ?? '');
+
+        if (empty($tanggal)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Tanggal publish wajib diisi.',
+            ]);
+        }
+
+        if (empty($jam)) {
+            $jam = '10:00'; // default jika tidak diisi
+        }
+
+        // Format jam menjadi H:i:s
+        $jamFormatted = (strlen($jam) === 5) ? $jam . ':00' : $jam;
+        $scheduledAt  = $tanggal . ' ' . $jamFormatted;
+
+        // Validasi format tanggal & jam
+        if (strtotime($scheduledAt) === false) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Format tanggal atau jam publish tidak valid.',
+            ]);
+        }
+
+        $this->model->protect(false)->update($id, [
+            'tanggal_publish'    => $tanggal,
+            'jam_publish'        => $jamFormatted,
+            'scheduled_at'       => $scheduledAt,
+            'is_scheduled'       => 1,
+            'publish_attempt'    => 0,
+            'last_publish_error' => null,
+            'is_processing'      => 0,
+            'updated_at'         => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->response->setJSON([
+            'status' => 'sukses',
+            'pesan'  => 'Jadwal auto-publish berhasil disimpan untuk ' . date('d M Y H:i', strtotime($scheduledAt)) . '.',
+            'data'   => [
+                'id'              => $id,
+                'tanggal_publish' => $tanggal,
+                'jam_publish'     => $jamFormatted,
+                'scheduled_at'    => $scheduledAt,
+                'is_scheduled'    => 1,
+            ],
+        ]);
+    }
+
+    /**
+     * POST /dashboard/jadwal-upload/batal-jadwal/{id}
+     * Batalkan jadwal auto-publish untuk konten.
+     */
+    public function batalJadwal(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role = session('kode_role');
+        if (! in_array($role, ['admin_medsos', 'superadmin', 'owner', 'manager'], true)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Anda tidak memiliki hak akses.',
+            ]);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ]);
+        }
+
+        $this->model->protect(false)->update($id, [
+            'is_scheduled'  => 0,
+            'is_processing' => 0,
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->response->setJSON([
+            'status' => 'sukses',
+            'pesan'  => 'Jadwal auto-publish berhasil dibatalkan.',
+        ]);
+    }
+
+    /**
+     * POST /dashboard/jadwal-upload/retry/{id}
+     * Reset status percobaan publish agar bisa dicoba kembali oleh scheduler atau langsung.
+     */
+    public function retryPublish(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role = session('kode_role');
+        if (! in_array($role, ['admin_medsos', 'superadmin', 'owner', 'manager'], true)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Anda tidak memiliki hak akses.',
+            ]);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ]);
+        }
+
+        $this->model->protect(false)->update($id, [
+            'publish_attempt'    => 0,
+            'last_publish_error' => null,
+            'is_processing'      => 0,
+            'is_scheduled'       => 1,
+            'updated_at'         => date('Y-m-d H:i:s'),
+        ]);
+
+        return $this->response->setJSON([
+            'status' => 'sukses',
+            'pesan'  => 'Status publish berhasil di-reset. Konten siap dicoba ulang.',
+        ]);
+    }
 }
 
 

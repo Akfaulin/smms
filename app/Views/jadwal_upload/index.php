@@ -142,10 +142,29 @@ $roleNow = $kode_role ?? session('kode_role');
                             'ditolak'   => 'ditolak',
                             default => 'draft'
                         };
+                        $isSched = !empty($k['is_scheduled']);
+                        $attempt = (int) ($k['publish_attempt'] ?? 0);
+                        $lastError = $k['last_publish_error'] ?? null;
                         ?>
-                        <span class="cp-badge <?= $sCls ?>" style="padding:4px 12px; font-size:12px; display:inline-block; font-weight:600; border-radius:20px; white-space:nowrap;">
-                            <?= esc(\App\Services\TransisiKonten::labelStatus($k['status'])) ?>
-                        </span>
+                        <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                            <span class="cp-badge <?= $sCls ?>" style="padding:4px 12px; font-size:12px; display:inline-block; font-weight:600; border-radius:20px; white-space:nowrap;">
+                                <?= esc(\App\Services\TransisiKonten::labelStatus($k['status'])) ?>
+                            </span>
+
+                            <?php if ($k['status'] === 'acc_final' && $isSched && !empty($k['scheduled_at'])): ?>
+                            <span style="display:inline-flex; align-items:center; gap:4px; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;" title="Auto-publish dijadwalkan: <?= esc($k['scheduled_at']) ?>">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                Auto <?= date('d/m H:i', strtotime($k['scheduled_at'])) ?>
+                            </span>
+                            <?php endif; ?>
+
+                            <?php if ($attempt > 0 && $k['status'] !== 'published'): ?>
+                            <span style="display:inline-flex; align-items:center; gap:4px; background:#fef2f2; color:#dc2626; border:1px solid #fecaca; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600;" title="<?= esc($lastError ?: 'Gagal dipublish otomatis') ?>">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                Gagal (<?= $attempt ?>/3)
+                            </span>
+                            <?php endif; ?>
+                        </div>
                     </td>
                     <td style="font-size:13px; color:#475569; font-weight:500;">
                         <?= esc($k['platform_str'] ?: '—') ?>
@@ -275,6 +294,56 @@ $roleNow = $kode_role ?? session('kode_role');
                 <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
             </div>
 
+
+            <!-- Penjadwalan Auto-Publish Box -->
+            <div id="schedBox" style="display:none; margin-top:16px; border:1px solid #bfdbfe; border-radius:12px; padding:16px; background:#f8fafc;">
+                <div style="font-weight:600; color:#1e40af; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Penjadwalan Auto-Publish (Background)
+                    </div>
+                    <button type="button" id="btnBatalSched" onclick="batalkanJadwalAutoPublish()" class="cpb cpb-sec" style="display:none; padding:4px 10px; font-size:11px; color:#dc2626; border-color:#fecaca; background:#fff;">
+                        Batalkan Jadwal
+                    </button>
+                </div>
+                <p style="font-size:12px; color:#64748b; margin-bottom:12px; line-height:1.4;">
+                    Atur tanggal dan jam publish otomatis. Sistem background scheduler akan mengeksekusi publishing ke Meta Graph API saat waktu target tercapai.
+                </p>
+
+                <div id="schedStatus" style="display:none; align-items:center; gap:6px; background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; font-size:12px; padding:8px 12px; border-radius:8px; margin-bottom:12px; font-weight:500;"></div>
+
+                <!-- Retry Alert Box -->
+                <div id="retryBox" style="display:none; margin-bottom:12px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 12px;">
+                    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+                        <div>
+                            <div style="font-weight:600; font-size:12px; color:#991b1b; display:flex; align-items:center; gap:4px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                Terjadi Kegagalan Auto-Publish
+                            </div>
+                            <div id="retryErrorText" style="font-size:11.5px; color:#b91c1c; margin-top:2px;"></div>
+                        </div>
+                        <button type="button" onclick="retryAutoPublish()" class="cpb" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 10px; border-radius:6px; border:none; white-space:nowrap; cursor:pointer; font-weight:600;">
+                            🔄 Reset & Coba Ulang
+                        </button>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:flex-end;">
+                    <div>
+                        <label style="font-size:11px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Tanggal Publish</label>
+                        <input type="date" id="inSchedDate" class="cp-inp" style="width:100%; font-size:12.5px; padding:8px 10px; border-radius:8px;">
+                    </div>
+                    <div>
+                        <label style="font-size:11px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">Jam Publish (WIB)</label>
+                        <input type="time" id="inSchedTime" class="cp-inp" style="width:100%; font-size:12.5px; padding:8px 10px; border-radius:8px;">
+                    </div>
+                </div>
+                <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+                    <button type="button" id="btnSimpanSched" onclick="simpanJadwalAutoPublish()" class="cpb cpb-pri" style="padding:8px 16px; font-size:12px; font-weight:600; border-radius:8px; background:#2563eb; color:#fff;">
+                        💾 Simpan Jadwal Auto-Publish
+                    </button>
+                </div>
+            </div>
 
             <!-- Publish Otomatis Box (Instagram API) -->
             <div id="autoPublishBox" style="display:none; margin-top:16px; border:1px solid #bbf7d0; border-radius:12px; padding:16px; background:#f0fdf4;">

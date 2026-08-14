@@ -568,6 +568,47 @@ async function bukaDetail(id) {
         }
     }
 
+    // Penjadwalan Auto-Publish Handling
+    const schedBox       = document.getElementById('schedBox');
+    const inSchedDate    = document.getElementById('inSchedDate');
+    const inSchedTime    = document.getElementById('inSchedTime');
+    const schedStatus    = document.getElementById('schedStatus');
+    const btnBatalSched  = document.getElementById('btnBatalSched');
+    const retryBox       = document.getElementById('retryBox');
+    const retryErrorText = document.getElementById('retryErrorText');
+
+    if (schedBox) {
+        if (status === 'acc_final') {
+            schedBox.style.display = 'block';
+            if (inSchedDate) inSchedDate.value = k.tanggal_publish ? k.tanggal_publish.substring(0, 10) : '';
+            if (inSchedTime) inSchedTime.value = k.jam_publish ? k.jam_publish.substring(0, 5) : '10:00';
+
+            if (k.is_scheduled == 1 && k.scheduled_at) {
+                if (schedStatus) {
+                    schedStatus.style.display = 'flex';
+                    schedStatus.innerHTML = `⏳ Konten dijadwalkan auto-publish pada: <strong style="margin-left:4px;">${formatWaktu(k.scheduled_at)}</strong>`;
+                }
+                if (btnBatalSched) btnBatalSched.style.display = 'inline-flex';
+            } else {
+                if (schedStatus) schedStatus.style.display = 'none';
+                if (btnBatalSched) btnBatalSched.style.display = 'none';
+            }
+
+            if (k.publish_attempt > 0 && status !== 'published') {
+                if (retryBox) {
+                    retryBox.style.display = 'block';
+                    if (retryErrorText) {
+                        retryErrorText.textContent = `Percobaan ke-${k.publish_attempt}/3 gagal: ${k.last_publish_error || 'Error tidak diketahui'}`;
+                    }
+                }
+            } else {
+                if (retryBox) retryBox.style.display = 'none';
+            }
+        } else {
+            schedBox.style.display = 'none';
+        }
+    }
+
     if (txBox) {
         // Filter out 'published' from transition group if it's a Foto/Static Post/Carousel content
         let filteredTersedia = tersedia;
@@ -808,6 +849,68 @@ async function eksekusiPublishOtomatis() {
             btn.disabled = false;
             btn.innerHTML = `🚀 Publish ke Instagram Sekarang (Otomatis)`;
         }
+    }
+}
+
+// ─── Auto-Publish Scheduling Handlers ──────────────────────
+
+async function simpanJadwalAutoPublish() {
+    if (!activeContent) return;
+    const tanggal = document.getElementById('inSchedDate')?.value;
+    const jam     = document.getElementById('inSchedTime')?.value || '10:00';
+
+    if (!tanggal) {
+        toast('Tanggal publish wajib dipilih.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('btnSimpanSched');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
+    }
+
+    const fd = new FormData();
+    fd.append('tanggal_publish', tanggal);
+    fd.append('jam_publish', jam);
+
+    const res = await api(`/dashboard/jadwal-upload/atur-jadwal/${activeContent}`, 'POST', fd);
+    if (res && res.status === 'sukses') {
+        toast(res.pesan, 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        toast(res ? res.pesan : 'Gagal menyimpan jadwal.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `💾 Simpan Jadwal Auto-Publish`;
+        }
+    }
+}
+
+async function batalkanJadwalAutoPublish() {
+    if (!activeContent) return;
+    if (!confirm('Apakah Anda yakin ingin membatalkan jadwal auto-publish ini?')) return;
+
+    const res = await api(`/dashboard/jadwal-upload/batal-jadwal/${activeContent}`, 'POST');
+    if (res && res.status === 'sukses') {
+        toast('Jadwal auto-publish berhasil dibatalkan.', 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        toast(res ? res.pesan : 'Gagal membatalkan jadwal.', 'error');
+    }
+}
+
+async function retryAutoPublish() {
+    if (!activeContent) return;
+    const res = await api(`/dashboard/jadwal-upload/retry/${activeContent}`, 'POST');
+    if (res && res.status === 'sukses') {
+        toast('Status berhasil di-reset. Konten siap dicoba ulang oleh scheduler.', 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        toast(res ? res.pesan : 'Gagal reset status.', 'error');
     }
 }
 

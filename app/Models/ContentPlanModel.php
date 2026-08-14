@@ -49,6 +49,12 @@ class ContentPlanModel extends Model
         'caption',
         'design_url',
         'image_url',
+        'jam_publish',
+        'scheduled_at',
+        'is_scheduled',
+        'publish_attempt',
+        'last_publish_error',
+        'is_processing',
     ];
 
     protected $validationRules = [

@@ -1040,6 +1040,97 @@ class GraphApiService
     }
 
     /**
+     * Publish otomatis konten dari data record content_plan
+     * Menangani klasifikasi tipe konten (Single Image, Carousel, Reels, Story) secara terpadu.
+     *
+     * @param array $konten Data row content_plan (bisa beserta relasi)
+     * @return array Standard response ['status' => 'sukses'|'gagal', 'pesan' => string, 'data' => array]
+     */
+    public function publishContentPlan(array $konten): array
+    {
+        $imageUrl = trim($konten['image_url'] ?? '');
+        if (empty($imageUrl)) {
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Konten belum punya media gambar/video untuk dipublish.',
+                'data'   => [],
+            ];
+        }
+
+        $caption = $konten['caption'] ?? '';
+
+        // Tentukan jenis konten
+        $namaJenis = strtolower(trim($konten['nama_jenis'] ?? ''));
+        if (empty($namaJenis) && ! empty($konten['jenis_konten_id'])) {
+            $db = \Config\Database::connect();
+            $rowJenis = $db->table('jenis_konten')->where('id', $konten['jenis_konten_id'])->get()->getRowArray();
+            $namaJenis = $rowJenis ? strtolower(trim($rowJenis['nama_jenis'])) : '';
+        }
+
+        $isCarousel = ($namaJenis === 'carousel');
+        $isReels    = ($namaJenis === 'reels / video' || $namaJenis === 'reels');
+        $isStory    = ($namaJenis === 'story' || $namaJenis === 'stories');
+
+        if ($isCarousel) {
+            $urls = array_filter(array_map('trim', explode("\n", $imageUrl)));
+            if (count($urls) < 2) {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Konten Carousel membutuhkan minimal 2 link gambar (dipisah dengan Enter).',
+                    'data'   => [],
+                ];
+            }
+            return $this->publishCarouselToInstagram(array_values($urls), $caption);
+        }
+
+        if ($isReels) {
+            $urls = array_filter(array_map('trim', explode("\n", $imageUrl)));
+            $videoUrl = $urls[0] ?? '';
+            $coverUrl = $urls[1] ?? null;
+
+            if (empty($videoUrl)) {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Konten Reels membutuhkan minimal 1 link video (.mp4).',
+                    'data'   => [],
+                ];
+            }
+
+            $parsedPath = parse_url($videoUrl, PHP_URL_PATH);
+            if ($parsedPath && substr(strtolower($parsedPath), -4) !== '.mp4' && strpos($videoUrl, 'drive.google.com') === false) {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Format video tidak didukung. Harap masukkan link file video .mp4 (atau link Google Drive).',
+                    'data'   => [],
+                ];
+            }
+
+            return $this->publishReelsToInstagram($videoUrl, $caption, $coverUrl);
+        }
+
+        if ($isStory) {
+            $urls = array_filter(array_map('trim', explode("\n", $imageUrl)));
+            $mediaUrl = $urls[0] ?? '';
+            if (empty($mediaUrl)) {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Konten Story membutuhkan minimal 1 link media.',
+                    'data'   => [],
+                ];
+            }
+            return $this->publishStoryToInstagram($mediaUrl, $caption, 'AUTO');
+        }
+
+        // Default Single Image / Photo
+        $urlValidation = $this->validatePublicUrl($imageUrl);
+        if ($urlValidation['status'] === 'gagal') {
+            return $urlValidation;
+        }
+
+        return $this->publishToInstagram($imageUrl, $caption);
+    }
+
+    /**
      * Sanitasi pesan error agar App Secret tidak bocor
      */
     protected function sanitizeMessage(string $msg): string
