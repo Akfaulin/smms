@@ -110,5 +110,5 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     });
 
     // Business Switcher — ganti bisnis aktif via session (POST & GET)
-    $routes->match(['get', 'post'], 'bisnis/switch/(:num)', 'Bisnis::switch/$1');
+    $routes->match(['GET', 'POST'], 'bisnis/switch/(:num)', 'Bisnis::switch/$1');
 });
