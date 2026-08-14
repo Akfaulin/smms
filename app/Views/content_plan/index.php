@@ -120,9 +120,13 @@ $roleNow   = $kode_role ?? session('kode_role');
 
     <!-- Legend -->
     <div class="cp-legend">
+        <span class="cp-leg-item"><span class="cp-leg-dot ide_diajukan"></span> Ide Diajukan</span>
+        <span class="cp-leg-item"><span class="cp-leg-dot acc_ide"></span> Acc Ide</span>
+        <span class="cp-leg-item"><span class="cp-leg-dot in_design"></span> In Design</span>
+        <span class="cp-leg-item"><span class="cp-leg-dot review_design"></span> Review Desain</span>
+        <span class="cp-leg-item"><span class="cp-leg-dot revisi"></span> Revisi</span>
+        <span class="cp-leg-item"><span class="cp-leg-dot acc_final"></span> Acc Final</span>
         <span class="cp-leg-item"><span class="cp-leg-dot published"></span> Published</span>
-        <span class="cp-leg-item"><span class="cp-leg-dot acc"></span> Dalam Proses</span>
-        <span class="cp-leg-item"><span class="cp-leg-dot draft"></span> Draft / Revisi</span>
         <span class="cp-leg-item"><span class="cp-leg-dot ditolak"></span> Ditolak</span>
         <span style="margin-left:auto;font-size:11px;color:var(--cp-muted)" id="legendCount"></span>
     </div>
@@ -193,8 +197,8 @@ $roleNow   = $kode_role ?? session('kode_role');
 
             <div class="cp-row cp-row-3col" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:16px;">
                 <div class="cp-field">
-                    <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Tanggal Publish</label>
-                    <input type="date" id="fTanggal" class="cp-inp" style="padding:9px 12px;">
+                    <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Jadwal & Jam Publish</label>
+                    <input type="datetime-local" id="fTanggal" class="cp-inp" style="padding:9px 12px;">
                 </div>
                 <div class="cp-field">
                     <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Jenis Konten</label>

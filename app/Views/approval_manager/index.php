@@ -201,117 +201,203 @@ $roleNow = $kode_role ?? session('kode_role');
             <button class="cp-tab" id="tabTimeline" onclick="gantiTab('timeline')">Riwayat Status</button>
         </div>
 
-        <!-- Tab Info -->
+        <!-- Tab Info / Review & Revisi -->
         <div class="cp-tab-panel active" id="panelInfo">
-            <div class="cp-det-grid" id="detGrid">
-                <div><div class="cp-det-label">Status</div><div class="cp-det-val" id="detStatus">—</div></div>
-                <div><div class="cp-det-label">Tanggal Publish</div><div class="cp-det-val" id="detTanggal">—</div></div>
-                <div><div class="cp-det-label">Dibuat Oleh</div><div class="cp-det-val" id="detPembuat">—</div></div>
-                <div><div class="cp-det-label">Platform</div><div class="cp-det-val" id="detPlatform">—</div></div>
-                <div><div class="cp-det-label">Jenis Konten</div><div class="cp-det-val" id="detJenis">—</div></div>
-                <div><div class="cp-det-label">Content Pillar</div><div class="cp-det-val" id="detPillar">—</div></div>
-                <div><div class="cp-det-label">Designer</div><div class="cp-det-val" id="detDesigner">—</div></div>
-                <div><div class="cp-det-label">Uploader</div><div class="cp-det-val" id="detUploader">—</div></div>
+            
+            <!-- Summary Banner -->
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="cp-det-label" style="font-size:12px; font-weight:700; color:#64748b; margin:0;">Status Saat Ini:</div>
+                    <div id="detStatus">—</div>
+                </div>
+                <div style="font-size:12px; color:#475569;">
+                    Diusulkan oleh: <strong id="detPembuat">—</strong>
+                </div>
             </div>
-            <div class="cp-det-desc" id="detDesc" style="display:none;margin-top:16px;"></div>
 
-            <!-- AI & Manual Caption Box -->
-            <div class="cp-caption-box" id="captionBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        Caption Konten
+            <!-- Form Revisi Data Konten (Akses Penuh Manager) -->
+            <div style="border:1.5px solid #e2e8f0; border-radius:14px; padding:18px; background:#ffffff; margin-bottom:18px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+                    <div style="font-size:14px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Revisi & Penyesuaian Data Ide (Manager Direct Edit)
                     </div>
-                    <button type="button" class="cpb cpb-sec" id="btnAiCaption" style="padding:6px 12px; font-size:12px; display:none; background:#f0f9ff; border:1px solid #bae6fd; color:#0284c7; font-weight:600; border-radius:8px;" onclick="generateAiCaption()">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI
+                    <span style="font-size:11.5px; font-weight:600; color:#2563eb; background:#eff6ff; padding:3px 10px; border-radius:12px;">Akses Penuh Edit</span>
+                </div>
+
+                <!-- Judul Konten -->
+                <div class="cp-field" style="margin-bottom:14px;">
+                    <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Judul Konten <span style="color:#dc2626">*</span></label>
+                    <input type="text" id="fMgrJudul" class="cp-inp" placeholder="Judul konten..." style="padding:10px 14px; font-size:13.5px; font-weight:600;">
+                </div>
+
+                <!-- Grid 3 Kolom: Tanggal/Jam, Jenis, Pillar -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:14px;">
+                    <div class="cp-field">
+                        <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Jadwal & Jam Publish</label>
+                        <input type="datetime-local" id="fMgrTanggal" class="cp-inp" style="padding:9px 12px; font-size:12.5px;">
+                    </div>
+                    <div class="cp-field">
+                        <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Jenis Konten</label>
+                        <select id="fMgrJenis" class="cp-inp" style="padding:9px 12px; font-size:12.5px;">
+                            <option value="">— Pilih Jenis —</option>
+                            <?php foreach ($jenisKonten as $j): ?>
+                            <option value="<?= $j['id'] ?>"><?= esc($j['nama_jenis']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="cp-field">
+                        <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Content Pillar</label>
+                        <select id="fMgrPillar" class="cp-inp" style="padding:9px 12px; font-size:12.5px;">
+                            <option value="">— Pilih Pillar —</option>
+                            <?php foreach ($contentTypes as $ct): ?>
+                            <option value="<?= $ct['id'] ?>"><?= esc($ct['nama_type']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Platform Target -->
+                <div class="cp-field" style="margin-bottom:14px;">
+                    <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Platform Target</label>
+                    <div class="cp-plat-wrap" id="fMgrPlatformsWrap">
+                        <?php foreach ($platforms as $p): ?>
+                        <label class="cp-plat-lbl mgr-plat-lbl-<?= $p['id'] ?>">
+                            <input type="checkbox" class="plat-cb mgr-plat-cb" value="<?= $p['id'] ?>">
+                            <span><?= esc($p['nama_platform']) ?></span>
+                        </label>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Penugasan Tim (Designer & Uploader) -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+                    <div class="cp-field">
+                        <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Tugaskan Designer (Content Creator)</label>
+                        <select id="fMgrDesigner" class="cp-inp" style="padding:9px 12px; font-size:12.5px;">
+                            <option value="">— Pilih Designer —</option>
+                            <?php foreach ($designers as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= esc($u['nama']) ?> (<?= esc($u['nama_role']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="cp-field">
+                        <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Tugaskan Uploader (Admin Medsos)</label>
+                        <select id="fMgrUploader" class="cp-inp" style="padding:9px 12px; font-size:12.5px;">
+                            <option value="">— Pilih Uploader —</option>
+                            <?php foreach ($uploaders as $u): ?>
+                            <option value="<?= $u['id'] ?>"><?= esc($u['nama']) ?> (<?= esc($u['nama_role']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Deskripsi / Brief Ide -->
+                <div class="cp-field" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="font-size:12px; font-weight:700; color:#374151; margin:0;">Deskripsi / Brief Konsep Visual</label>
+                        <button type="button" class="cpb cpb-sec" id="btnMgrAiBrief" style="padding:4px 10px; font-size:11.5px; font-weight:600; display:inline-flex; align-items:center; gap:4px; border-radius:6px; background:#e0f2fe; border:1px solid #bae6fd; color:#0284c7;" onclick="generateAiBriefManager()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                            Saran Brief AI
+                        </button>
+                    </div>
+                    <textarea id="fMgrDesc" class="cp-inp" placeholder="Tulis brief ide, poin penting, arahan revisi atau konsep..." rows="3" style="padding:10px 14px; min-height:75px; font-size:13px; line-height:1.5;"></textarea>
+                </div>
+
+                <!-- Caption Konten (Bisa diedit Manager) -->
+                <div class="cp-field" style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:8px;">
+                        <label style="font-size:12px; font-weight:700; color:#374151; margin:0;">Caption Konten</label>
+                        <button type="button" class="cpb cpb-sec" id="btnAiCaption" style="padding:4px 10px; font-size:11.5px; display:inline-flex; align-items:center; gap:4px; background:#f0f9ff; border:1px solid #bae6fd; color:#0284c7; font-weight:600; border-radius:6px;" onclick="generateAiCaption()">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Tulis Caption AI
+                        </button>
+                    </div>
+                    <textarea id="inCaptionText" class="cp-inp" rows="3" placeholder="Tulis caption manual atau gunakan bantuan AI..." style="width:100%; font-size:13px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:75px;"></textarea>
+                </div>
+
+                <!-- Tombol Simpan Perubahan Data -->
+                <div style="display:flex; justify-content:flex-end; padding-top:6px;">
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanMgrEdit" onclick="simpanManagerEdit()" style="padding:9px 20px; font-size:12.5px; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px; background:#2563eb; color:#fff;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Simpan Perubahan Data
                     </button>
                 </div>
-                <div>
-                    <textarea id="inCaptionText" class="cp-inp" rows="4" placeholder="Tulis caption manual atau gunakan bantuan AI di atas..." style="width:100%; font-size:13.5px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:90px;"></textarea>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                        <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none;"></div>
-                        <button type="button" class="cpb cpb-pri" id="btnSimpanCaption" onclick="simpanCaptionManual()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
-                            Simpan Caption
+            </div>
+
+            <!-- Link Desain & Preview Materi Konten -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:18px;">
+                <!-- Link Desain Canva Box -->
+                <div class="cp-design-box" id="designBox" style="border:1px solid var(--cp-border); border-radius:12px; padding:14px; background:var(--cp-white);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div style="font-weight:700; font-size:12.5px; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00c4cc" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
+                            Link Desain Canva / Figma
+                        </div>
+                        <a id="btnBukaCanva" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:5px 10px; font-size:11.5px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:6px;">
+                            Buka Desain ↗
+                        </a>
+                    </div>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Link Canva/Figma..." style="flex:1; font-size:12px; padding:7px 10px; border-radius:6px;">
+                        <button type="button" class="cpb cpb-pri" id="btnSimpanDesignUrl" onclick="simpanDesignUrl()" style="padding:7px 12px; font-size:11.5px; font-weight:600; white-space:nowrap; border-radius:6px;">
+                            Simpan
                         </button>
                     </div>
                 </div>
-                <div id="detCaption" style="font-size:14px; color:var(--cp-muted); white-space:pre-wrap; display:none;">(Belum ada caption)</div>
-            </div>
 
-            <!-- Link Desain Canva Box -->
-            <div class="cp-design-box" id="designBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c4cc" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
-                        Link Desain Canva / Figma
+                <!-- Link Gambar Google Drive Box -->
+                <div class="cp-upload-box" id="uploadImageBox" style="border:1px solid var(--cp-border); border-radius:12px; padding:14px; background:var(--cp-white);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <div style="font-weight:700; font-size:12.5px; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            Link Gambar / Drive
+                        </div>
+                        <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:5px 10px; font-size:11.5px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:6px;">
+                            Preview ↗
+                        </a>
                     </div>
-                    <a id="btnBukaCanva" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link desain belum diisi" onclick="toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                        Buka Canva ↗
-                    </a>
-                </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva/Figma di sini (https://canva.com/design/...)" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanDesignUrl" onclick="simpanDesignUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                        Simpan Link
-                    </button>
-                </div>
-                <div id="designUrlStatus" style="font-size:12px; color:#16a34a; margin-top:6px; display:none; font-weight:500;"></div>
-            </div>
-
-            <!-- Link Gambar / Google Drive Box -->
-            <div class="cp-upload-box" id="uploadImageBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        Link Gambar Konten
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <input type="text" id="inImageUrl" class="cp-inp" placeholder="Link Google Drive..." style="flex:1; font-size:12px; padding:7px 10px; border-radius:6px;">
+                        <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:7px 12px; font-size:11.5px; font-weight:600; white-space:nowrap; border-radius:6px;">
+                            Simpan
+                        </button>
                     </div>
-                    <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link gambar belum diisi" onclick="toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                        Preview ↗
-                    </a>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="inImageUrl" class="cp-inp" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                        Simpan Link Gambar
-                    </button>
-                </div>
-                <div style="font-size:11px; color:var(--cp-muted); margin-top:6px; display:flex; align-items:flex-start; gap:4px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    Pastikan file di Google Drive sudah di-share dengan akses <strong>"Anyone with the link"</strong> agar bisa diakses sistem. Link Drive akan otomatis dikonversi ke format direct-access.
-                </div>
-                <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
             </div>
 
-            <!-- Transition Box -->
-            <div class="cp-transition-box" id="transitionBox" style="display:none;margin-top:16px">
-                <div class="cp-transition-label" style="display:flex; align-items:center; gap:6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                    Ubah Status Konten (Keputusan Manager)
+            <!-- Transition & Decision Box (Keputusan Manager + Catatan Revisi) -->
+            <div class="cp-transition-box" id="transitionBox" style="display:none; margin-top:0; border:1.5px solid #cbd5e1; border-radius:14px; padding:18px; background:#f8fafc;">
+                <div class="cp-transition-label" style="display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:800; color:#0f172a; margin-bottom:12px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Keputusan Approval Manager & Catatan Instruksi
                 </div>
                 <input type="hidden" id="selTransisi" value="">
-                <div class="cp-trans-field" style="margin-bottom:12px;">
-                    <label style="margin-bottom:6px; display:block;">Pilih Status Tujuan</label>
+                <div class="cp-trans-field" style="margin-bottom:14px;">
+                    <label style="margin-bottom:8px; display:block; font-size:12px; font-weight:700; color:#374151;">Pilih Keputusan Status:</label>
                     <div class="cp-status-btn-group" id="statusBtnContainer">
+                        <!-- Buttons rendered dynamically -->
                     </div>
                 </div>
-                <div class="cp-catatan-wrap">
-                    <textarea class="cp-inp" id="txCatatan" placeholder="Catatan (wajib untuk revisi/tolak)..." rows="2"></textarea>
+                <div class="cp-catatan-wrap" style="margin-bottom:12px;">
+                    <label style="margin-bottom:6px; display:block; font-size:12px; font-weight:700; color:#374151;">Catatan Instruksi Revisi / Feedback Manager:</label>
+                    <textarea class="cp-inp" id="txCatatan" placeholder="Tulis instruksi perbaikan untuk Tim Kreatif / Designer (wajib jika memilih status Revisi atau Ditolak)..." rows="3" style="padding:10px 14px; font-size:13px; min-height:80px;"></textarea>
                     <div class="cp-req-note" id="noteWajib">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        Catatan wajib diisi untuk transisi ini.
+                        Catatan instruksi wajib diisi jika memilih opsi Revisi atau Ditolak.
                     </div>
                 </div>
-                <div class="cp-catatan-wrap" id="wrapLinkPost" style="display:none">
-                    <input type="url" class="cp-inp" id="inLinkPost" placeholder="Link postingan (wajib untuk published)...">
+                <div class="cp-catatan-wrap" id="wrapLinkPost" style="display:none; margin-bottom:12px;">
+                    <label style="margin-bottom:6px; display:block; font-size:12px; font-weight:700; color:#374151;">Link Postingan Publikasi:</label>
+                    <input type="url" class="cp-inp" id="inLinkPost" placeholder="https://instagram.com/p/... (wajib untuk published)">
                     <div class="cp-req-note show" id="noteLinkPost" style="display:none">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         Link postingan wajib diisi.
                     </div>
                 </div>
-                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
-                    <button class="cpb cpb-pri" id="btnEksekusi" onclick="eksekusiTransisi()" style="width:100%;">Ubah Status</button>
+                <div style="margin-top:14px; display:flex; justify-content:flex-end;">
+                    <button class="cpb cpb-pri" id="btnEksekusi" onclick="eksekusiTransisi()" style="width:100%; padding:11px; font-size:13.5px; font-weight:800; border-radius:10px; background:#059669; color:#fff;">
+                        Kirim Keputusan Status & Catatan
+                    </button>
                 </div>
             </div>
         </div>
@@ -343,6 +429,146 @@ $roleNow = $kode_role ?? session('kode_role');
             tr.style.display = (!query || text.includes(query)) ? '' : 'none';
         });
     }
+
+    // Populate full form fields for Manager review & edit (Point 5)
+    function populateManagerForm(k) {
+        if (!k) return;
+        const fJudul    = document.getElementById('fMgrJudul');
+        const fDesc     = document.getElementById('fMgrDesc');
+        const fTanggal  = document.getElementById('fMgrTanggal');
+        const fJenis    = document.getElementById('fMgrJenis');
+        const fPillar   = document.getElementById('fMgrPillar');
+        const fDesigner = document.getElementById('fMgrDesigner');
+        const fUploader = document.getElementById('fMgrUploader');
+        const fCaption  = document.getElementById('inCaptionText');
+
+        if (fJudul)    fJudul.value = k.judul_konten || '';
+        if (fDesc)     fDesc.value = k.deskripsi || '';
+        if (fTanggal) {
+            fTanggal.value = k.tanggal_publish ? k.tanggal_publish.replace(' ', 'T').substring(0, 16) : '';
+        }
+        if (fJenis)    fJenis.value = k.jenis_konten_id || '';
+        if (fPillar)   fPillar.value = k.content_type_id || '';
+        if (fDesigner) fDesigner.value = k.assigned_designer || '';
+        if (fUploader) fUploader.value = k.assigned_uploader || '';
+        if (fCaption)  fCaption.value = k.caption || '';
+
+        // Platform checkboxes
+        const platIds = (k.platforms || []).map(p => String(p.id || p.platform_id));
+        document.querySelectorAll('.mgr-plat-cb').forEach(cb => {
+            const isChecked = platIds.includes(cb.value);
+            cb.checked = isChecked;
+            cb.closest('.cp-plat-lbl')?.classList.toggle('on', isChecked);
+        });
+    }
+
+    // Direct save edited data for Manager
+    async function simpanManagerEdit() {
+        if (!activeContent) return;
+        const judul = document.getElementById('fMgrJudul')?.value.trim();
+        if (!judul) { toast('Judul konten tidak boleh kosong.', 'error'); return; }
+
+        const btn = document.getElementById('btnSimpanMgrEdit');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="cp-spin"></span> Menyimpan...';
+        }
+
+        const fd = new FormData();
+        fd.append('judul_konten', judul);
+        fd.append('deskripsi', document.getElementById('fMgrDesc')?.value || '');
+        fd.append('tanggal_publish', document.getElementById('fMgrTanggal')?.value || '');
+        fd.append('jenis_konten_id', document.getElementById('fMgrJenis')?.value || '');
+        fd.append('content_type_id', document.getElementById('fMgrPillar')?.value || '');
+        fd.append('assigned_designer', document.getElementById('fMgrDesigner')?.value || '');
+        fd.append('assigned_uploader', document.getElementById('fMgrUploader')?.value || '');
+        fd.append('caption', document.getElementById('inCaptionText')?.value || '');
+
+        document.querySelectorAll('.mgr-plat-cb:checked').forEach(cb => {
+            fd.append('platforms[]', cb.value);
+        });
+
+        const res = await api(`/dashboard/content-plan/update/${activeContent}`, 'POST', fd);
+
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+
+        if (res.status === 'sukses') {
+            toast('Data konten & penugasan berhasil diperbarui oleh Manager!', 'success');
+            const detJudul = document.getElementById('detJudul');
+            if (detJudul) detJudul.textContent = judul;
+            
+            // Sync local data
+            const idx = (window.ALL_KONTEN || []).findIndex(x => x.id == activeContent);
+            if (idx !== -1) {
+                window.ALL_KONTEN[idx].judul_konten = judul;
+                window.ALL_KONTEN[idx].deskripsi = document.getElementById('fMgrDesc')?.value || '';
+                window.ALL_KONTEN[idx].tanggal_publish = document.getElementById('fMgrTanggal')?.value || '';
+                window.ALL_KONTEN[idx].caption = document.getElementById('inCaptionText')?.value || '';
+            }
+        } else {
+            toast(res.pesan || 'Gagal memperbarui data konten.', 'error');
+        }
+    }
+
+    // Helper AI Brief for Manager
+    async function generateAiBriefManager() {
+        const judul = document.getElementById('fMgrJudul')?.value.trim();
+        const jenis = document.getElementById('fMgrJenis')?.options[document.getElementById('fMgrJenis')?.selectedIndex]?.text || '';
+        const pillar = document.getElementById('fMgrPillar')?.options[document.getElementById('fMgrPillar')?.selectedIndex]?.text || '';
+
+        if (!judul) {
+            toast('Silakan isi Judul Konten terlebih dahulu.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btnMgrAiBrief');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = 'Generating...';
+        }
+
+        try {
+            const csrfToken = (typeof getCsrfToken === 'function' ? getCsrfToken() : (document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''));
+            const response = await fetch('/dashboard/content-plan/ai-brief', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: 'judul=' + encodeURIComponent(judul) + '&jenis=' + encodeURIComponent(jenis) + '&pillar=' + encodeURIComponent(pillar)
+            });
+
+            const res = await response.json();
+            if (res.status === 'sukses' && res.data && res.data.brief) {
+                const descInput = document.getElementById('fMgrDesc');
+                if (descInput) descInput.value = res.data.brief;
+                toast('Brief ide berhasil di-generate AI!', 'success');
+            } else {
+                toast(res.pesan || 'Gagal membuat brief AI.', 'error');
+            }
+        } catch (err) {
+            toast('Terjadi kesalahan koneksi.', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.mgr-plat-cb').forEach(cb => {
+            cb.addEventListener('change', () => {
+                cb.closest('.cp-plat-lbl')?.classList.toggle('on', cb.checked);
+            });
+        });
+    });
 </script>
 <script src="/js/content-plan.js?v=<?= time() ?>"></script>
 <?= $this->endSection() ?>

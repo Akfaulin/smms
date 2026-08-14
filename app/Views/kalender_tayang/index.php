@@ -56,6 +56,18 @@
         </div>
     </div>
 
+    <!-- Status Legend -->
+    <div class="kt-legend">
+        <span class="kt-leg-item"><span class="kt-leg-dot ide_diajukan"></span> Ide Diajukan</span>
+        <span class="kt-leg-item"><span class="kt-leg-dot acc_ide"></span> Acc Ide</span>
+        <span class="kt-leg-item"><span class="kt-leg-dot in_design"></span> In Design</span>
+        <span class="kt-leg-item"><span class="kt-leg-dot review_design"></span> Review Desain</span>
+        <span class="kt-leg-item"><span class="kt-leg-dot revisi"></span> Revisi</span>
+        <span class="kt-leg-item"><span class="kt-leg-dot acc_final"></span> Acc Final</span>
+        <span class="kt-leg-item"><span class="kt-leg-dot published"></span> Published</span>
+        <span class="kt-leg-item"><span class="kt-leg-dot ditolak"></span> Ditolak</span>
+    </div>
+
     <!-- Day Names Header -->
     <div class="kt-cal-grid" style="margin-bottom:6px;">
         <div class="kt-cal-day-head">Senin</div>
@@ -233,10 +245,11 @@
             // Filter events on this date
             const dayEvents = window.EVENTS.filter(ev => ev.tgl === dateKey);
             dayEvents.forEach(ev => {
+                const timePrefix = ev.jam ? `[${ev.jam}] ` : '';
                 const pill = document.createElement('div');
                 pill.className = `kt-cal-pill ${ev.status}`;
-                pill.textContent = ev.judul;
-                pill.title = `${ev.judul} (${ev.platform_str})`;
+                pill.textContent = `${timePrefix}${ev.judul}`;
+                pill.title = `${timePrefix}${ev.judul} (${ev.platform_str})`;
                 pill.onclick = function(e) {
                     e.stopPropagation();
                     bukaDetail(ev.id);

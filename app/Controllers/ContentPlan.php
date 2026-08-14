@@ -189,11 +189,14 @@ class ContentPlan extends BaseController
             $assignedUploader = $uploaderUser['id'] ?? null;
         }
 
+        $rawTgl = $this->request->getPost('tanggal_publish');
+        $tglPublish = $rawTgl ? date('Y-m-d H:i:s', strtotime(str_replace('T', ' ', $rawTgl))) : null;
+
         $data = [
             'bisnis_id'         => (int) session('bisnis_aktif_id'),
             'judul_konten'      => $this->request->getPost('judul_konten'),
             'deskripsi'         => $this->request->getPost('deskripsi'),
-            'tanggal_publish'   => $this->request->getPost('tanggal_publish') ?: null,
+            'tanggal_publish'   => $tglPublish,
             'jenis_konten_id'   => $this->request->getPost('jenis_konten_id') ?: null,
             'content_type_id'   => $this->request->getPost('content_type_id') ?: null,
             'assigned_designer' => $assignedDesigner,
@@ -275,13 +278,21 @@ class ContentPlan extends BaseController
             );
         }
 
+        $rawTgl = $this->request->getPost('tanggal_publish');
+        $tglPublish = $rawTgl ? date('Y-m-d H:i:s', strtotime(str_replace('T', ' ', $rawTgl))) : null;
+
         $data = [
             'judul_konten'    => $this->request->getPost('judul_konten'),
             'deskripsi'       => $this->request->getPost('deskripsi'),
-            'tanggal_publish' => $this->request->getPost('tanggal_publish') ?: null,
+            'tanggal_publish' => $tglPublish,
             'jenis_konten_id' => $this->request->getPost('jenis_konten_id') ?: null,
             'content_type_id' => $this->request->getPost('content_type_id') ?: null,
         ];
+
+        // Update caption jika dikirim
+        if ($this->request->getPost('caption') !== null) {
+            $data['caption'] = trim((string) $this->request->getPost('caption')) ?: null;
+        }
 
         // Opsional: assigned_designer & assigned_uploader boleh diset oleh manager/owner/superadmin
         if (in_array($kodeRole, ['superadmin', 'owner', 'manager'], true)) {
@@ -296,6 +307,21 @@ class ContentPlan extends BaseController
         if (! $this->model->update($id, $data)) {
             $errors = $this->model->errors();
             return $this->jsonGagal('Validasi gagal: ' . implode(', ', $errors), 422);
+        }
+
+        // Update platforms pivot jika dikirim
+        $platforms = $this->request->getPost('platforms');
+        if (is_array($platforms)) {
+            $db = \Config\Database::connect();
+            $db->table('content_platforms')->where('content_id', $id)->delete();
+            foreach ($platforms as $platId) {
+                if ($platId) {
+                    $db->table('content_platforms')->insert([
+                        'content_id'  => $id,
+                        'platform_id' => (int) $platId,
+                    ]);
+                }
+            }
         }
 
         return $this->jsonSukses('Data konten berhasil diperbarui.');
@@ -382,6 +408,15 @@ class ContentPlan extends BaseController
         if (! $konten) {
             return $this->jsonGagal('Konten tidak ditemukan.', 404);
         }
+
+        $db = \Config\Database::connect();
+        $plats = $db->table('content_platforms cp')
+            ->select('p.id, p.nama_platform')
+            ->join('platforms p', 'p.id = cp.platform_id')
+            ->where('cp.content_id', $id)
+            ->get()->getResultArray();
+        $konten['platforms']    = $plats;
+        $konten['platform_str'] = implode(', ', array_column($plats, 'nama_platform'));
 
         $logModel = new \App\Models\ContentStatusLogModel();
         $log      = $logModel->logKonten($id);

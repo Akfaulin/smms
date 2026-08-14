@@ -218,8 +218,8 @@ $roleNow   = $kode_role ?? session('kode_role');
 
             <div class="cp-row cp-row-3col" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:16px;">
                 <div class="cp-field">
-                    <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Tanggal Publish</label>
-                    <input type="date" id="fTanggal" class="cp-inp" style="padding:9px 12px;">
+                    <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Jadwal & Jam Publish</label>
+                    <input type="datetime-local" id="fTanggal" class="cp-inp" style="padding:9px 12px;">
                 </div>
                 <div class="cp-field">
                     <label style="font-size:12px; font-weight:700; color:#374151; margin-bottom:6px; display:block;">Jenis Konten</label>

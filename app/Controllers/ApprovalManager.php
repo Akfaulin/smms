@@ -92,6 +92,15 @@ class ApprovalManager extends BaseController
             ->groupEnd()
             ->get()->getResultArray();
 
+        $allUsers = $db->table('users u')
+            ->select('u.id, u.nama, r.kode_role, r.nama_role')
+            ->join('roles r', 'r.id = u.role_id')
+            ->where('u.status', 'aktif')
+            ->get()->getResultArray();
+
+        $designers = array_values(array_filter($allUsers, fn($u) => in_array($u['kode_role'], ['content_creator', 'manager', 'superadmin', 'owner'], true)));
+        $uploaders = array_values(array_filter($allUsers, fn($u) => in_array($u['kode_role'], ['admin_medsos', 'manager', 'superadmin', 'owner'], true)));
+
         return view('approval_manager/index', [
             'judul'             => 'Dashboard Approval Manager',
             'konten'            => $konten,
@@ -103,6 +112,8 @@ class ApprovalManager extends BaseController
             'platforms'         => $platforms,
             'jenisKonten'       => $jenisKonten,
             'contentTypes'      => $contentTypes,
+            'designers'         => $designers,
+            'uploaders'         => $uploaders,
             'kode_role'         => $role,
         ]);
     }

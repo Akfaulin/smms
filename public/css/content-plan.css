@@ -164,11 +164,15 @@
     font-size: 12px; color: var(--cp-muted); font-weight: 500;
 }
 
-.cp-leg-dot { width: 9px; height: 9px; border-radius: 50%; }
-.cp-leg-dot.published { background: var(--cp-green); }
-.cp-leg-dot.acc       { background: #1d4ed8; }
-.cp-leg-dot.draft     { background: var(--cp-orange); }
-.cp-leg-dot.ditolak   { background: var(--cp-red); }
+.cp-leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.cp-leg-dot.ide_diajukan  { background: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); }
+.cp-leg-dot.revisi        { background: #ea580c; box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.2); }
+.cp-leg-dot.acc_ide       { background: #0284c7; box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2); }
+.cp-leg-dot.in_design     { background: #8b5cf6; box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2); }
+.cp-leg-dot.review_design { background: #ec4899; box-shadow: 0 0 0 2px rgba(236, 72, 153, 0.2); }
+.cp-leg-dot.acc_final     { background: #0d9488; box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2); }
+.cp-leg-dot.published     { background: #16a34a; box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2); }
+.cp-leg-dot.ditolak       { background: #dc2626; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2); }
 
 /* ── View Toggle ────────────────────────────────────────── */
 .cp-toggle-wrap {
@@ -245,12 +249,19 @@
     transition: opacity .15s;
 }
 
-.cp-epill:hover { opacity: .75; }
-.cp-epill.published  { background: var(--cp-green-l); color: #15803d; }
-.cp-epill.acc        { background: #eff6ff; color: #1d4ed8; }
-.cp-epill.draft      { background: var(--cp-orange-l); color: #c2410c; }
-.cp-epill.ditolak    { background: var(--cp-red-l); color: var(--cp-red); }
-.cp-epill.past-pill  { opacity: .55; }
+.cp-epill:hover { opacity: .88; transform: translateY(-1px); }
+.cp-epill.ide_diajukan  { background: #fef3c7; color: #b45309; border-left: 3px solid #f59e0b; }
+.cp-epill.revisi        { background: #ffedd5; color: #c2410c; border-left: 3px solid #ea580c; }
+.cp-epill.acc_ide       { background: #e0f2fe; color: #0369a1; border-left: 3px solid #0284c7; }
+.cp-epill.in_design     { background: #f3e8ff; color: #6b21a8; border-left: 3px solid #8b5cf6; }
+.cp-epill.review_design { background: #fce7f3; color: #9d174d; border-left: 3px solid #ec4899; }
+.cp-epill.acc_final     { background: #ccfbf1; color: #115e59; border-left: 3px solid #0d9488; }
+.cp-epill.published     { background: #dcfce7; color: #15803d; border-left: 3px solid #16a34a; }
+.cp-epill.ditolak       { background: #fee2e2; color: #991b1b; border-left: 3px solid #dc2626; }
+/* Legacy fallbacks */
+.cp-epill.acc           { background: #e0f2fe; color: #0369a1; border-left: 3px solid #0284c7; }
+.cp-epill.draft         { background: #fef3c7; color: #b45309; border-left: 3px solid #f59e0b; }
+.cp-epill.past-pill     { opacity: .55; }
 
 .cp-more {
     font-size: 10px; font-weight: 700;
@@ -297,12 +308,18 @@
     padding: 3px 9px; border-radius: 20px;
 }
 
-.cp-badge.published  { background: var(--cp-green-l); color: var(--cp-green); }
-.cp-badge.acc        { background: #eff6ff; color: #1d4ed8; }
-.cp-badge.draft      { background: var(--cp-orange-l); color: var(--cp-orange); }
-.cp-badge.ditolak    { background: var(--cp-red-l); color: var(--cp-red); }
-.cp-badge.revisi     { background: var(--cp-orange-l); color: var(--cp-orange); }
-.cp-badge.ide        { background: var(--cp-blue-l); color: var(--cp-blue); }
+.cp-badge.ide_diajukan  { background: #fef3c7; color: #92400e; }
+.cp-badge.revisi        { background: #ffedd5; color: #c2410c; }
+.cp-badge.acc_ide       { background: #e0f2fe; color: #0369a1; }
+.cp-badge.in_design     { background: #f3e8ff; color: #6b21a8; }
+.cp-badge.review_design { background: #fce7f3; color: #9d174d; }
+.cp-badge.acc_final     { background: #ccfbf1; color: #115e59; }
+.cp-badge.published     { background: #dcfce7; color: #15803d; }
+.cp-badge.ditolak       { background: #fee2e2; color: #991b1b; }
+/* Legacy fallbacks */
+.cp-badge.acc           { background: #e0f2fe; color: #0369a1; }
+.cp-badge.draft         { background: #fef3c7; color: #92400e; }
+.cp-badge.ide           { background: #e0f2fe; color: #0369a1; }
 
 /* ── Modals ─────────────────────────────────────────────── */
 .cp-back {

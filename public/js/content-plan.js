@@ -23,10 +23,7 @@ const STATUS_LABEL = {
 
 // Class pill/badge berdasarkan status
 function statusClass(s) {
-    if (s === 'published') return 'published';
-    if (s === 'ditolak')   return 'ditolak';
-    if (['ide_diajukan','revisi'].includes(s)) return 'draft';
-    return 'acc';
+    return s || 'ide_diajukan';
 }
 
 // Transisi valid per status & role
@@ -147,7 +144,9 @@ function buildCalendar() {
         const MAX_PILLS = 3;
         const pills = dayKonten.slice(0, MAX_PILLS).map(k => {
             const pillCls = statusClass(k.status) + (isPast ? ' past-pill' : '');
-            return `<div class="cp-epill ${pillCls}" onclick="event.stopPropagation();bukaDetail(${k.id})" title="${escHtml(k.judul_konten)}">${escHtml(k.judul_konten)}</div>`;
+            const timeStr = (k.tanggal_publish && k.tanggal_publish.length > 10) ? k.tanggal_publish.substring(11, 16) : '';
+            const timePrefix = (timeStr && timeStr !== '00:00') ? `[${timeStr}] ` : '';
+            return `<div class="cp-epill ${pillCls}" onclick="event.stopPropagation();bukaDetail(${k.id})" title="${timePrefix}${escHtml(k.judul_konten)}">${timePrefix}${escHtml(k.judul_konten)}</div>`;
         }).join('');
 
         const more = dayKonten.length > MAX_PILLS
@@ -232,7 +231,15 @@ function bukaFormTambah(tanggal = '') {
     if (fDesc)     fDesc.value     = '';
     if (fJenis)    fJenis.value    = '';
     if (fPillar)   fPillar.value   = '';
-    if (fTanggal)  fTanggal.value  = tanggal;
+    if (fTanggal) {
+        if (tanggal && tanggal.length === 10) {
+            fTanggal.value = `${tanggal}T09:00`;
+        } else if (tanggal) {
+            fTanggal.value = tanggal.replace(' ', 'T').substring(0, 16);
+        } else {
+            fTanggal.value = '';
+        }
+    }
 
     // Uncheck all platforms
     document.querySelectorAll('.plat-cb').forEach(cb => {
@@ -358,14 +365,17 @@ async function bukaDetail(id) {
     if (detMeta)  detMeta.innerHTML = `<span class="cp-badge ${statusClass(status)}">${STATUS_LABEL[status]||status}</span> &nbsp; ID #${id}`;
 
     // Info tab
-    document.getElementById('detStatus').innerHTML   = `<span class="cp-badge ${statusClass(status)}">${STATUS_LABEL[status]||status}</span>`;
-    document.getElementById('detTanggal').textContent = k.tanggal_publish ? formatTgl(k.tanggal_publish) : '—';
-    document.getElementById('detPembuat').textContent = k.nama_pembuat || '—';
-    document.getElementById('detPlatform').textContent = k.platform_str || '—';
-    document.getElementById('detJenis').textContent   = k.nama_jenis || '—';
-    document.getElementById('detPillar').textContent  = k.nama_pillar || '—';
-    document.getElementById('detDesigner').textContent = k.nama_designer || '—';
-    document.getElementById('detUploader').textContent = k.nama_uploader || '—';
+    const setSafeHtml = (elId, html) => { const el = document.getElementById(elId); if (el) el.innerHTML = html; };
+    const setSafeText = (elId, text) => { const el = document.getElementById(elId); if (el) el.textContent = text; };
+
+    setSafeHtml('detStatus', `<span class="cp-badge ${statusClass(status)}">${STATUS_LABEL[status]||status}</span>`);
+    setSafeText('detTanggal', k.tanggal_publish ? formatTgl(k.tanggal_publish) : '—');
+    setSafeText('detPembuat', k.nama_pembuat || '—');
+    setSafeText('detPlatform', k.platform_str || '—');
+    setSafeText('detJenis', k.nama_jenis || '—');
+    setSafeText('detPillar', k.nama_pillar || '—');
+    setSafeText('detDesigner', k.nama_designer || '—');
+    setSafeText('detUploader', k.nama_uploader || '—');
 
     const descEl = document.getElementById('detDesc');
     if (descEl) {
@@ -377,10 +387,13 @@ async function bukaDetail(id) {
         }
     }
 
-    const isReadOnlyMode = window.IS_MANAGER_APPROVAL ||
-                           window.IS_ADMIN_MEDSOS_VIEW ||
-                           (window.ROLE === 'manager' && location.pathname.includes('approval-manager')) ||
-                           (window.ROLE === 'admin_medsos' || location.pathname.includes('jadwal-upload'));
+    // Hook for Manager Full Revision Form (Point 5)
+    if (typeof populateManagerForm === 'function') {
+        populateManagerForm(k);
+    }
+
+    const isReadOnlyMode = window.IS_ADMIN_MEDSOS_VIEW ||
+                           (window.ROLE === 'admin_medsos' && location.pathname.includes('jadwal-upload'));
 
     // Caption Logic (Manual Typing & AI Assistance)
     const btnAi = document.getElementById('btnAiCaption');
@@ -390,7 +403,7 @@ async function bukaDetail(id) {
     const statusCaption = document.getElementById('captionStatus');
 
     if (isReadOnlyMode) {
-        // Read-only inspection mode (Manager & Admin Medsos)
+        // Read-only inspection mode (Admin Medsos view)
         if (inCaptionText && inCaptionText.parentElement) {
             inCaptionText.parentElement.style.display = 'none';
         }
@@ -408,7 +421,7 @@ async function bukaDetail(id) {
             }
         }
     } else {
-        // Editable Mode (Creator / Team)
+        // Editable Mode (Manager, Creator, Creative Team, Superadmin, Owner)
         if (inCaptionText) {
             if (inCaptionText.parentElement) inCaptionText.parentElement.style.display = 'block';
             inCaptionText.value = k.caption || '';
@@ -421,11 +434,7 @@ async function bukaDetail(id) {
                 : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI';
 
             const roleNow = window.ROLE || '';
-            if (['in_design', 'revisi', 'acc_ide'].includes(status) && (roleNow === 'content_creator' || roleNow === 'creative_team' || OVERRIDE_ROLES.includes(roleNow))) {
-                btnAi.style.display = 'block';
-            } else {
-                btnAi.style.display = 'none';
-            }
+            btnAi.style.display = 'block';
         }
     }
 
@@ -1058,7 +1067,9 @@ function formatTgl(str) {
     if (!str) return '—';
     const [y,m,d] = str.substring(0,10).split('-');
     const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-    return `${parseInt(d)} ${bulan[parseInt(m)-1]} ${y}`;
+    const timeStr = (str.length > 10) ? str.substring(11, 16) : '';
+    const timeSuffix = (timeStr && timeStr !== '00:00') ? `, ${timeStr} WIB` : '';
+    return `${parseInt(d)} ${bulan[parseInt(m)-1]} ${y}${timeSuffix}`;
 }
 
 function formatWaktu(dt) {

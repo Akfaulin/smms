@@ -56,10 +56,12 @@ class KalenderTayang extends BaseController
 
         // Format event list untuk JS Kalender Grid
         $events = array_map(function($i) {
+            $jam = (! empty($i['tanggal_publish']) && strlen($i['tanggal_publish']) > 10) ? date('H:i', strtotime($i['tanggal_publish'])) : '';
             return [
                 'id'           => $i['id'],
                 'judul'        => $i['judul_konten'],
                 'tgl'          => date('Y-m-d', strtotime($i['tanggal_publish'])),
+                'jam'          => ($jam && $jam !== '00:00') ? $jam : '',
                 'status'       => $i['status'],
                 'platform_str' => $i['platform_str'],
                 'nama_pembuat' => $i['nama_pembuat'],
