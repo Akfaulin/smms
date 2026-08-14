@@ -636,15 +636,20 @@ class ContentPlan extends BaseController
         }
         $imageUrl = trim($imageUrl);
 
-        // Validasi format URL jika tidak kosong
-        if (! empty($imageUrl) && ! filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-            return $this->jsonGagal('Format URL tidak valid (harus diawali http:// atau https://).', 422);
-        }
-
-        // Konversi Google Drive share link → direct-access URL sebelum disimpan
+        // Proses multi-url (jika dipisah dengan enter/newline)
         if (! empty($imageUrl)) {
+            $urls = array_filter(array_map('trim', explode("\n", $imageUrl)));
             $graphService = new \App\Services\GraphApiService();
-            $imageUrl = $graphService->convertDriveLink($imageUrl);
+            $processedUrls = [];
+            
+            foreach ($urls as $url) {
+                if (! filter_var($url, FILTER_VALIDATE_URL)) {
+                    return $this->jsonGagal("Format URL tidak valid (harus diawali http:// atau https://): " . htmlspecialchars($url), 422);
+                }
+                $processedUrls[] = $graphService->convertDriveLink($url);
+            }
+            
+            $imageUrl = implode("\n", $processedUrls);
         }
 
         $this->model->protect(false)->update($id, [

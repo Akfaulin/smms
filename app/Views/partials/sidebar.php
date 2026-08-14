@@ -62,7 +62,7 @@
         </a>
 
         <?php $role = session('kode_role'); ?>
-        <?php if (in_array($role, ['creative_team', 'superadmin', 'owner'], true)): ?>
+        <?php if (in_array($role, ['creative_team', 'superadmin', 'owner', 'manager'], true)): ?>
         <a href="/dashboard/ide-konten" class="nav-item <?= str_contains(current_url(), 'ide-konten') ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 18h6m-4 4h2m-6-8c0-2.8 2.2-5 5-5s5 2.2 5 5c0 1.6-.8 3-2 3.8v1.2H10v-1.2C8.8 16 8 14.6 8 13z"/>

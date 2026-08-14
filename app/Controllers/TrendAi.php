@@ -24,7 +24,7 @@ class TrendAi extends BaseController
         $db = \Config\Database::connect();
         $role = session('kode_role');
 
-        if (!in_array($role, ['creative_team', 'superadmin', 'owner'], true)) {
+        if (!in_array($role, ['creative_team', 'superadmin', 'owner', 'manager'], true)) {
             return redirect()->to('/dashboard/content-plan');
         }
 

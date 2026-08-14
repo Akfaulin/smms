@@ -387,13 +387,9 @@ async function bukaDetail(id) {
         }
     }
 
-    // Hook for Manager Full Revision Form (Point 5)
-    if (typeof populateManagerForm === 'function') {
-        populateManagerForm(k);
-    }
-
     const isReadOnlyMode = window.IS_ADMIN_MEDSOS_VIEW ||
-                           (window.ROLE === 'admin_medsos' && location.pathname.includes('jadwal-upload'));
+                           window.ROLE === 'admin_medsos' ||
+                           location.pathname.includes('jadwal-upload');
 
     // Caption Logic (Manual Typing & AI Assistance)
     const btnAi = document.getElementById('btnAiCaption');
@@ -484,9 +480,38 @@ async function bukaDetail(id) {
     // Setup Buka Gambar / Preview Button & Image URL field
     const btnBukaGambar = document.getElementById('btnBukaGambar');
     const inImageUrl = document.getElementById('inImageUrl');
+    const namaJenis = (k.nama_jenis || '').toLowerCase();
 
     if (inImageUrl) {
         inImageUrl.value = k.image_url || '';
+        
+        // Update label & placeholder dynamically depending on content type (reels/carousel/image)
+        const uploadImageBox = document.getElementById('uploadImageBox');
+        if (uploadImageBox) {
+            const labelDiv = uploadImageBox.querySelector('div > div');
+            if (labelDiv) {
+                if (namaJenis === 'reels / video' || namaJenis === 'reels') {
+                    labelDiv.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+                        Link Video Reels & Cover (Opsional)
+                    `;
+                    inImageUrl.placeholder = "Baris 1: Paste link Google Drive video (.mp4) / URL video publik\nBaris 2: Paste link Google Drive gambar cover/thumbnail (opsional)";
+                } else if (namaJenis === 'carousel') {
+                    labelDiv.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Link Gambar Carousel
+                    `;
+                    inImageUrl.placeholder = "Paste link Google Drive (https://drive.google.com/...) atau URL publik lainnya.\nUntuk Carousel, pisahkan tiap link dengan Enter (baris baru).";
+                } else {
+                    labelDiv.innerHTML = `
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Link Gambar Konten
+                    `;
+                    inImageUrl.placeholder = "Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya";
+                }
+            }
+        }
+
         if (isReadOnlyMode && inImageUrl.parentElement) {
             inImageUrl.parentElement.style.display = 'none'; // Hide edit input & simpan button for Read-Only roles
             const noteEl = inImageUrl.parentElement.nextElementSibling;
@@ -500,10 +525,11 @@ async function bukaDetail(id) {
 
     if (btnBukaGambar) {
         if (k.image_url && k.image_url.trim() !== '') {
-            btnBukaGambar.href = k.image_url;
+            const lines = k.image_url.trim().split('\n').map(l => l.trim()).filter(l => l);
+            btnBukaGambar.href = lines[0];
             btnBukaGambar.target = '_blank';
             btnBukaGambar.removeAttribute('onclick');
-            btnBukaGambar.title = 'Buka gambar di tab baru';
+            btnBukaGambar.title = lines.length > 1 ? 'Buka gambar slide pertama di tab baru' : 'Buka gambar di tab baru';
             btnBukaGambar.style.opacity = '';
             btnBukaGambar.style.cursor = '';
             btnBukaGambar.style.pointerEvents = '';
@@ -536,13 +562,12 @@ async function bukaDetail(id) {
 
     // Transition box
     const tersedia = getTransisiTersedia(status);
-    const namaJenis = (k.nama_jenis || '').toLowerCase();
-    const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
+    const isAutoPublishable = namaJenis === 'static post' || namaJenis === 'foto' || namaJenis === 'carousel' || namaJenis === 'reels / video' || namaJenis === 'reels';
 
     // Auto Publish Box handling
     const autoPublishBox = document.getElementById('autoPublishBox');
     if (autoPublishBox) {
-        if (isFoto && k.image_url && status !== 'published') {
+        if (isAutoPublishable && k.image_url && status !== 'published') {
             autoPublishBox.style.display = 'block';
         } else {
             autoPublishBox.style.display = 'none';
@@ -550,9 +575,9 @@ async function bukaDetail(id) {
     }
 
     if (txBox) {
-        // Filter out 'published' from transition group if it's a Foto/Static Post content
+        // Filter out 'published' from transition group if it's a Foto/Static Post/Carousel content
         let filteredTersedia = tersedia;
-        if (isFoto) {
+        if (isAutoPublishable) {
             filteredTersedia = tersedia.filter(s => s !== 'published');
         }
 
@@ -971,6 +996,18 @@ async function simpanImageUrl() {
 
     const imageUrl = (inUrl?.value || '').trim();
 
+    // Validasi format video mp4 untuk Reels
+    const cachedItem = (window.ALL_KONTEN || []).find(x => x.id == activeContent);
+    const namaJenis = (cachedItem?.nama_jenis || '').toLowerCase();
+    if (imageUrl && (namaJenis === 'reels / video' || namaJenis === 'reels')) {
+        const lines = imageUrl.split('\n').map(l => l.trim()).filter(l => l);
+        const videoUrl = lines[0] || '';
+        const isMp4 = videoUrl.toLowerCase().endsWith('.mp4') || videoUrl.includes('drive.google.com') || videoUrl.includes('googleusercontent.com');
+        if (!isMp4) {
+            toast('Peringatan: Link pertama disarankan berakhiran .mp4 atau menggunakan Google Drive.', 'warning');
+        }
+    }
+
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
@@ -1004,18 +1041,19 @@ async function simpanImageUrl() {
         if (autoPublishBox) {
             const cachedItem = (window.ALL_KONTEN || []).find(x => x.id == activeContent);
             const namaJenis = (cachedItem?.nama_jenis || '').toLowerCase();
-            const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
-            autoPublishBox.style.display = (isFoto && savedUrl) ? 'block' : 'none';
+            const isAutoPublishable = namaJenis === 'static post' || namaJenis === 'foto' || namaJenis === 'carousel' || namaJenis === 'reels / video' || namaJenis === 'reels';
+            autoPublishBox.style.display = (isAutoPublishable && savedUrl) ? 'block' : 'none';
         }
 
         // Update Buka Gambar / Preview Button state
         const btnBukaGambar = document.getElementById('btnBukaGambar');
         if (btnBukaGambar) {
             if (savedUrl) {
-                btnBukaGambar.href = savedUrl;
+                const lines = savedUrl.trim().split('\n').map(l => l.trim()).filter(l => l);
+                btnBukaGambar.href = lines[0];
                 btnBukaGambar.target = '_blank';
                 btnBukaGambar.removeAttribute('onclick');
-                btnBukaGambar.title = 'Buka gambar di tab baru';
+                btnBukaGambar.title = lines.length > 1 ? 'Buka gambar slide pertama di tab baru' : 'Buka gambar di tab baru';
                 btnBukaGambar.style.opacity = '';
                 btnBukaGambar.style.cursor = '';
                 btnBukaGambar.style.pointerEvents = '';

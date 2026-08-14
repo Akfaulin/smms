@@ -279,6 +279,7 @@ class GraphApiService
      */
     public function publishToInstagram(string $imageUrl, string $caption = ''): array
     {
+        @set_time_limit(120);
         // 0. Konversi Google Drive share link ke direct-access URL
         $imageUrl = $this->convertDriveLink($imageUrl);
 
@@ -378,6 +379,416 @@ class GraphApiService
                 'creation_id'  => $creationId,
                 'ig_account_id'=> $igAccountId,
                 'image_url'    => $imageUrl,
+                'caption'      => $caption,
+                'warning'      => $warning,
+            ],
+        ];
+    }
+
+    /**
+     * Publish Carousel (Multi-image) ke Instagram
+     *
+     * @param array  $imageUrls Array of URL publik gambar
+     * @param string $caption Caption postingan
+     * @return array Standard response format ['status' => 'sukses'|'gagal', 'pesan' => string, 'data' => array]
+     */
+    public function publishCarouselToInstagram(array $imageUrls, string $caption = ''): array
+    {
+        @set_time_limit(180);
+        if (count($imageUrls) < 2 || count($imageUrls) > 10) {
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Jumlah slide Carousel harus antara 2 hingga 10 gambar.',
+                'data'   => [],
+            ];
+        }
+
+        // 1. Validasi Caption (Max 2200 Karakter)
+        $warning = null;
+        if (empty(trim($caption))) {
+            $warning = 'Caption kosong. Gambar akan dipublish tanpa caption.';
+        } elseif (mb_strlen($caption) > 2200) {
+            $caption = mb_substr($caption, 0, 2200);
+            $warning = 'Caption melebihi 2200 karakter dan telah dipotong secara otomatis.';
+        }
+
+        // 2. Dapatkan Instagram Business Account ID
+        $igAccountId = $this->getInstagramBusinessAccountId();
+        if (empty($igAccountId)) {
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Gagal mendapatkan Instagram Business Account ID. Pastikan User Access Token sudah dikonfigurasi.',
+                'data'   => [],
+            ];
+        }
+
+        $token = $this->getAccessToken();
+        $slideIds = [];
+
+        // 3. Step 1: Upload tiap slide sebagai container
+        foreach ($imageUrls as $index => $url) {
+            $url = $this->convertDriveLink($url);
+            
+            $urlValidation = $this->validatePublicUrl($url);
+            if ($urlValidation['status'] === 'gagal') {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => "Slide " . ($index + 1) . ": " . $urlValidation['pesan'],
+                    'data'   => $urlValidation['data'],
+                ];
+            }
+
+            $slideUrl = '/' . $igAccountId . '/media';
+            $slidePayload = [
+                'image_url'        => $url,
+                'is_carousel_item' => 'true',
+                'access_token'     => $token,
+            ];
+
+            $slideRes = $this->requestApiWithRetry('POST', $slideUrl, $slidePayload, 3, true);
+
+            if ($slideRes['status'] !== 'sukses' || empty($slideRes['data']['id'])) {
+                $errorMessage = $slideRes['pesan'] ?? 'Gagal membuat container slide Instagram.';
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Meta Graph API Slide Error: ' . $this->sanitizeMessage($errorMessage),
+                    'data'   => $slideRes['data'] ?? [],
+                ];
+            }
+
+            $slideIds[] = $slideRes['data']['id'];
+        }
+
+        // Tunggu semua slide diproses
+        foreach ($slideIds as $slideId) {
+            $this->waitForContainerReady($igAccountId, $slideId, $token);
+        }
+
+        // 4. Step 2: Buat Carousel Container
+        $carouselUrl = '/' . $igAccountId . '/media';
+        $carouselPayload = [
+            'media_type'   => 'CAROUSEL',
+            'children'     => implode(',', $slideIds),
+            'caption'      => $caption,
+            'access_token' => $token,
+        ];
+
+        $carouselRes = $this->requestApiWithRetry('POST', $carouselUrl, $carouselPayload, 3, true);
+
+        if ($carouselRes['status'] !== 'sukses' || empty($carouselRes['data']['id'])) {
+            $errorMessage = $carouselRes['pesan'] ?? 'Gagal membuat container carousel Instagram.';
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Meta Graph API Carousel Container Error: ' . $this->sanitizeMessage($errorMessage),
+                'data'   => $carouselRes['data'] ?? [],
+            ];
+        }
+
+        $creationId = $carouselRes['data']['id'];
+        
+        // Tunggu container carousel siap
+        $this->waitForContainerReady($igAccountId, $creationId, $token);
+
+        // 5. Step 3: Publish Carousel Container
+        $publishUrl = '/' . $igAccountId . '/media_publish';
+        $publishPayload = [
+            'creation_id'  => $creationId,
+            'access_token' => $token,
+        ];
+
+        $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
+
+        if ($publishRes['status'] === 'gagal' && isset($publishRes['data']['error']['code']) && $publishRes['data']['error']['code'] == 9007) {
+            log_message('warning', "Meta Graph API 9007 encountered on carousel. Retrying publish...");
+            sleep(5);
+            $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
+        }
+
+        if ($publishRes['status'] !== 'sukses' || empty($publishRes['data']['id'])) {
+            $errorMessage = $publishRes['pesan'] ?? 'Gagal mempublikasikan carousel Instagram.';
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Meta Graph API Publish Error: ' . $this->sanitizeMessage($errorMessage),
+                'data'   => $publishRes['data'] ?? [],
+            ];
+        }
+
+        $mediaId = $publishRes['data']['id'];
+
+        return [
+            'status' => 'sukses',
+            'pesan'  => 'Carousel berhasil dipublish ke Instagram!',
+            'data'   => [
+                'media_id'     => $mediaId,
+                'creation_id'  => $creationId,
+                'ig_account_id'=> $igAccountId,
+                'image_urls'   => $imageUrls,
+                'caption'      => $caption,
+                'warning'      => $warning,
+            ],
+        ];
+    }
+
+    /**
+     * Publish Reels (Video) ke Instagram
+     *
+     * @param string      $videoUrl URL publik file video MP4
+     * @param string      $caption Caption postingan
+     * @param string|null $coverUrl URL publik file gambar untuk cover (opsional)
+     * @return array Standard response format ['status' => 'sukses'|'gagal', 'pesan' => string, 'data' => array]
+     */
+    public function publishReelsToInstagram(string $videoUrl, string $caption = '', ?string $coverUrl = null): array
+    {
+        @set_time_limit(240); // Durasi pemrosesan video lebih lama
+
+        // 0. Konversi Google Drive share link ke direct-access URL
+        $videoUrl = $this->convertDriveLink($videoUrl);
+        if (! empty($coverUrl)) {
+            $coverUrl = $this->convertDriveLink($coverUrl);
+        }
+
+        // 1. Validasi Video URL
+        $urlValidation = $this->validatePublicUrl($videoUrl);
+        if ($urlValidation['status'] === 'gagal') {
+            return $urlValidation;
+        }
+
+        // Validasi Cover URL jika diisi
+        if (! empty($coverUrl)) {
+            $coverValidation = $this->validatePublicUrl($coverUrl);
+            if ($coverValidation['status'] === 'gagal') {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Cover/Thumbnail Error: ' . $coverValidation['pesan'],
+                    'data'   => $coverValidation['data']
+                ];
+            }
+        }
+
+        // 2. Validasi Caption (Max 2200 Karakter)
+        $warning = null;
+        if (empty(trim($caption))) {
+            $warning = 'Caption kosong. Reels akan dipublish tanpa caption.';
+        } elseif (mb_strlen($caption) > 2200) {
+            $caption = mb_substr($caption, 0, 2200);
+            $warning = 'Caption melebihi 2200 karakter dan telah dipotong secara otomatis.';
+        }
+
+        // 3. Dapatkan Instagram Business Account ID
+        $igAccountId = $this->getInstagramBusinessAccountId();
+        if (empty($igAccountId)) {
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Gagal mendapatkan Instagram Business Account ID. Pastikan User Access Token sudah dikonfigurasi.',
+                'data'   => [],
+            ];
+        }
+
+        $token = $this->getAccessToken();
+
+        // 4. Step 1: Create Video Container via Instagram API
+        $containerUrl = '/' . $igAccountId . '/media';
+        $containerPayload = [
+            'media_type'    => 'REELS',
+            'video_url'     => $videoUrl,
+            'caption'       => $caption,
+            'share_to_feed' => 'true',
+            'access_token'  => $token,
+        ];
+
+        if (! empty($coverUrl)) {
+            $containerPayload['cover_url'] = $coverUrl;
+        }
+
+        $containerRes = $this->requestApiWithRetry('POST', $containerUrl, $containerPayload, 3, true);
+
+        if ($containerRes['status'] !== 'sukses' || empty($containerRes['data']['id'])) {
+            $errorMessage = $containerRes['pesan'] ?? 'Gagal membuat container Reels Instagram.';
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Meta Graph API Reels Container Error: ' . $this->sanitizeMessage($errorMessage),
+                'data'   => $containerRes['data'] ?? [],
+            ];
+        }
+
+        $creationId = $containerRes['data']['id'];
+
+        // 5. Step 2: Tunggu container Reels selesai diproses oleh Meta (async)
+        // Video biasanya butuh waktu 10-60 detik tergantung ukuran berkas.
+        $this->waitForContainerReady($igAccountId, $creationId, $token, 60);
+
+        // 6. Step 3: Publish Container Reels
+        $publishUrl = '/' . $igAccountId . '/media_publish';
+        $publishPayload = [
+            'creation_id'  => $creationId,
+            'access_token' => $token,
+        ];
+
+        $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
+
+        // Handle specific error code 9007: Video processing still pending
+        if ($publishRes['status'] === 'gagal' && isset($publishRes['data']['error']['code']) && $publishRes['data']['error']['code'] == 9007) {
+            log_message('warning', "Meta Graph API 9007 encountered on Reels. Retrying publish in 10 seconds...");
+            sleep(10);
+            $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
+        }
+
+        if ($publishRes['status'] !== 'sukses' || empty($publishRes['data']['id'])) {
+            $errorMessage = $publishRes['pesan'] ?? 'Gagal mempublikasikan Reels Instagram.';
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Meta Graph API Publish Error: ' . $this->sanitizeMessage($errorMessage),
+                'data'   => $publishRes['data'] ?? [],
+            ];
+        }
+
+        $mediaId = $publishRes['data']['id'];
+
+        return [
+            'status' => 'sukses',
+            'pesan'  => 'Reels berhasil dipublish ke Instagram!',
+            'data'   => [
+                'media_id'     => $mediaId,
+                'creation_id'  => $creationId,
+                'ig_account_id'=> $igAccountId,
+                'video_url'    => $videoUrl,
+                'cover_url'    => $coverUrl,
+                'caption'      => $caption,
+                'warning'      => $warning,
+            ],
+        ];
+    }
+
+    /**
+     * Publish Story (Image or Video) ke Instagram
+     *
+     * @param string $mediaUrl URL publik file media (JPG, PNG, atau MP4)
+     * @param string $caption Caption/Notes (tidak tampil sebagai teks besar di Story, mungkin diabaikan oleh platform, tapi dikirim untuk data internal)
+     * @param string $mediaType Tipe media yang dikirimkan: 'IMAGE' atau 'VIDEO' (Default: di-detect otomatis jika 'AUTO')
+     * @return array Standard response format ['status' => 'sukses'|'gagal', 'pesan' => string, 'data' => array]
+     */
+    public function publishStoryToInstagram(string $mediaUrl, string $caption = '', string $mediaType = 'AUTO'): array
+    {
+        @set_time_limit(180);
+
+        // 0. Konversi Google Drive share link ke direct-access URL
+        $mediaUrl = $this->convertDriveLink($mediaUrl);
+
+        // 1. Validasi Media URL
+        $urlValidation = $this->validatePublicUrl($mediaUrl);
+        if ($urlValidation['status'] === 'gagal') {
+            return $urlValidation;
+        }
+
+        // 2. Deteksi Media Type jika AUTO
+        $parsedPath = parse_url($mediaUrl, PHP_URL_PATH);
+        if ($mediaType === 'AUTO') {
+            $mediaType = 'IMAGE'; // Default fallback
+            if ($parsedPath && substr(strtolower($parsedPath), -4) === '.mp4') {
+                $mediaType = 'VIDEO';
+            }
+        }
+
+        // 3. Validasi Caption (biasanya IG Stories punya limit caption text, dikirim tapi nggak se-prominent feed)
+        $warning = null;
+        if (mb_strlen($caption) > 200) { // arbitrary limit for stories
+            $caption = mb_substr($caption, 0, 200);
+            $warning = 'Caption sangat panjang. Untuk Stories, caption tidak ditampilkan secara penuh atau mungkin diabaikan.';
+        }
+
+        // 4. Dapatkan Instagram Business Account ID
+        $igAccountId = $this->getInstagramBusinessAccountId();
+        if (empty($igAccountId)) {
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Gagal mendapatkan Instagram Business Account ID. Pastikan User Access Token sudah dikonfigurasi.',
+                'data'   => [],
+            ];
+        }
+
+        $token = $this->getAccessToken();
+
+        // 5. Step 1: Create Story Container via Instagram API
+        // POST https://graph.instagram.com/{version}/{ig-user-id}/media
+        $containerUrl = '/' . $igAccountId . '/media';
+        $containerPayload = [
+            'media_type'    => 'STORIES',
+            'access_token'  => $token,
+        ];
+
+        // Opsional: Untuk akun terverifikasi (Swipe up link / Tap link)
+        // saat ini dilewati dulu karena membutuhkan validasi akun.
+        
+        if ($mediaType === 'VIDEO') {
+            $containerPayload['video_url'] = $mediaUrl;
+        } else {
+            $containerPayload['image_url'] = $mediaUrl;
+        }
+
+        $containerRes = $this->requestApiWithRetry('POST', $containerUrl, $containerPayload, 3, true);
+
+        if ($containerRes['status'] !== 'sukses' || empty($containerRes['data']['id'])) {
+            $errorMessage = $containerRes['pesan'] ?? 'Gagal membuat container Story Instagram.';
+            
+            // Tangkap pesan spesifik untuk stories
+            if (isset($containerRes['data']['error']['message'])) {
+                $errMsg = $containerRes['data']['error']['message'];
+                if (stripos($errMsg, 'duration') !== false) {
+                    $errorMessage = "Durasi video untuk Stories maksimal 15 detik. " . $errMsg;
+                } else if (stripos($errMsg, 'aspect ratio') !== false) {
+                    $errorMessage = "Rasio media tidak valid untuk Stories (disarankan 9:16). " . $errMsg;
+                }
+            }
+
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Meta Graph API Story Container Error: ' . $this->sanitizeMessage($errorMessage),
+                'data'   => $containerRes['data'] ?? [],
+            ];
+        }
+
+        $creationId = $containerRes['data']['id'];
+
+        // 6. Step 2: Tunggu container Story selesai diproses oleh Meta (async)
+        // Video butuh waktu proses, gambar juga
+        $this->waitForContainerReady($igAccountId, $creationId, $token, ($mediaType === 'VIDEO' ? 60 : 30));
+
+        // 7. Step 3: Publish Container Story
+        $publishUrl = '/' . $igAccountId . '/media_publish';
+        $publishPayload = [
+            'creation_id'  => $creationId,
+            'access_token' => $token,
+        ];
+
+        $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
+
+        // Handle specific error code 9007: Media processing still pending
+        if ($publishRes['status'] === 'gagal' && isset($publishRes['data']['error']['code']) && $publishRes['data']['error']['code'] == 9007) {
+            log_message('warning', "Meta Graph API 9007 encountered on Story. Retrying publish in 10 seconds...");
+            sleep(10);
+            $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
+        }
+
+        if ($publishRes['status'] !== 'sukses' || empty($publishRes['data']['id'])) {
+            $errorMessage = $publishRes['pesan'] ?? 'Gagal mempublikasikan Story Instagram.';
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Meta Graph API Publish Error: ' . $this->sanitizeMessage($errorMessage),
+                'data'   => $publishRes['data'] ?? [],
+            ];
+        }
+
+        $mediaId = $publishRes['data']['id'];
+
+        return [
+            'status' => 'sukses',
+            'pesan'  => 'Story berhasil dipublish ke Instagram!',
+            'data'   => [
+                'media_id'     => $mediaId,
+                'creation_id'  => $creationId,
+                'ig_account_id'=> $igAccountId,
+                'media_url'    => $mediaUrl,
+                'media_type'   => $mediaType,
                 'caption'      => $caption,
                 'warning'      => $warning,
             ],

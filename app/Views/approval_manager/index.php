@@ -343,6 +343,16 @@ $roleNow = $kode_role ?? session('kode_role');
                             Simpan
                         </button>
                     </div>
+                    <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link gambar belum diisi" onclick="toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Preview ↗
+                    </a>
+                </div>
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <textarea id="inImageUrl" class="cp-inp" rows="3" placeholder="Paste link Google Drive (https://drive.google.com/...) atau URL publik lainnya.&#10;Untuk Carousel, pisahkan tiap link dengan Enter (baris baru)." style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px; resize:vertical; min-height:40px;"></textarea>
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px; align-self:stretch;">
+                        Simpan Link Gambar
+                    </button>
                 </div>
 
                 <!-- Link Gambar Google Drive Box -->

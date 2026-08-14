@@ -353,9 +353,9 @@ $roleNow   = $kode_role ?? session('kode_role');
                         Preview ↗
                     </a>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="inImageUrl" class="cp-inp" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <textarea id="inImageUrl" class="cp-inp" rows="3" placeholder="Paste link Google Drive (https://drive.google.com/...) atau URL publik lainnya.&#10;Untuk Carousel, pisahkan tiap link dengan Enter (baris baru)." style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px; resize:vertical; min-height:40px;"></textarea>
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px; align-self:stretch;">
                         Simpan Link Gambar
                     </button>
                 </div>
