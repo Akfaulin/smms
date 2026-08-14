@@ -50,7 +50,7 @@ $STATUS_LABEL = [
         <p class="db-welcome-sub" style="font-size:13px; color:#64748b; margin-top:3px;">Berikut adalah ringkasan perkembangan produksi dan antrean tugas Anda hari ini.</p>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
-        <?php if (in_array($kode_role, ['creative_team', 'superadmin', 'owner'], true)): ?>
+        <?php if (in_array($kode_role, ['creative_team', 'superadmin', 'owner', 'manager'], true)): ?>
         <a href="/dashboard/ide-konten" class="cpb cpb-pri" style="padding:9px 16px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 18h6m-4 4h2m-6-8c0-2.8 2.2-5 5-5s5 2.2 5 5c0 1.6-.8 3-2 3.8v1.2H10v-1.2C8.8 16 8 14.6 8 13z"/></svg>
             Ajukan Ide Konten
