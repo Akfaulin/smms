@@ -29,7 +29,7 @@ class MetaApi extends BaseConfig
     /**
      * Instagram Business Account ID (optional — jika diisi, skip API lookup)
      */
-    public string $igAccountId = '27737834732545092';
+    public string $igAccountId = '';
 
     /**
      * Meta Base Graph API Endpoint
@@ -39,7 +39,7 @@ class MetaApi extends BaseConfig
     /**
      * User Access Token (Short-lived or Long-lived from .env)
      */
-    public string $userAccessToken = 'IGAAsU0LFY39dBZAFpfRExwdUp2a0NXZAFdWNU9KRkRDcS0xekV6MUVXRUtvYjg4SWtzNkROUlptdXYzaHUwRzJHYmdZAdnN2V0JUV2RwdWd2OVpEYUFhTVdZAeUx2bXowd3BFTUVoWWU1cmF5UVRzcXFyaEY3VjIwQnlIWVl6WFNTZAwZDZD';
+    public string $userAccessToken = '';
 
     public function __construct()
     {
