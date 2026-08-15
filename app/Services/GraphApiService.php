@@ -357,28 +357,32 @@ class GraphApiService
             $isVideo = false;
         } else {
             // 2. Cek Content-Type via cURL HEAD jika ekstensi tidak eksplisit (misal link Google Drive)
-            try {
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $firstUrl);
-                curl_setopt($ch, CURLOPT_NOBODY, true);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_exec($ch);
-                $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-                curl_close($ch);
+            if (function_exists('curl_init') && function_exists('curl_exec')) {
+                try {
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $firstUrl);
+                    curl_setopt($ch, CURLOPT_NOBODY, true);
+                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+                    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                    curl_exec($ch);
+                    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+                    curl_close($ch);
 
-                if ($contentType) {
-                    $ctLower = strtolower($contentType);
-                    if (str_starts_with($ctLower, 'video/')) {
-                        $isVideo = true;
-                    } elseif (str_starts_with($ctLower, 'image/')) {
-                        $isVideo = false;
+                    if ($contentType) {
+                        $ctLower = strtolower($contentType);
+                        if (str_starts_with($ctLower, 'video/')) {
+                            $isVideo = true;
+                        } elseif (str_starts_with($ctLower, 'image/')) {
+                            $isVideo = false;
+                        }
                     }
+                } catch (\Throwable $e) {
+                    $isVideo = $isReels;
                 }
-            } catch (\Throwable $e) {
-                // Fallback
+            } else {
                 $isVideo = $isReels;
             }
         }
@@ -824,46 +828,82 @@ class GraphApiService
         $activeBaseUrl = $useIgApi ? $this->igBaseUrl : $this->baseUrl;
         $absoluteUrl   = $activeBaseUrl . $cleanEndpoint;
 
-        if (!function_exists('curl_init') || !function_exists('curl_exec')) {
+        $rawBody    = false;
+        $statusCode = 0;
+        $curlError  = '';
+
+        // 1. Coba native cURL jika ekstensi tersedia
+        if (function_exists('curl_init') && function_exists('curl_exec')) {
+            try {
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 35);
+
+                if (strtoupper($method) === 'GET') {
+                    $getUrl = $absoluteUrl . (!empty($params) ? ('?' . http_build_query($params)) : '');
+                    curl_setopt($ch, CURLOPT_URL, $getUrl);
+                } else {
+                    curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
+                    curl_setopt($ch, CURLOPT_POST, true);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+                }
+
+                $rawBody    = curl_exec($ch);
+                $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError  = curl_error($ch);
+                curl_close($ch);
+            } catch (\Throwable $e) {
+                $curlError = $e->getMessage();
+            }
+        }
+
+        // 2. Stream fallback jika cURL tidak aktif / dibatasi di cPanel
+        if ($rawBody === false) {
+            try {
+                $isPost    = (strtoupper($method) === 'POST');
+                $streamUrl = $absoluteUrl . ((!$isPost && !empty($params)) ? ('?' . http_build_query($params)) : '');
+
+                $httpOptions = [
+                    'method'        => strtoupper($method),
+                    'timeout'       => 35,
+                    'ignore_errors' => true,
+                ];
+
+                if ($isPost) {
+                    $content = http_build_query($params);
+                    $httpOptions['header']  = "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: " . strlen($content) . "\r\n";
+                    $httpOptions['content'] = $content;
+                }
+
+                $ctx = stream_context_create([
+                    'http' => $httpOptions,
+                    'ssl'  => [
+                        'verify_peer'      => false,
+                        'verify_peer_name' => false,
+                    ]
+                ]);
+
+                $rawBody = @file_get_contents($streamUrl, false, $ctx);
+                if (isset($http_response_header[0]) && preg_match('/HTTP\/\S+\s+(\d+)/', $http_response_header[0], $m)) {
+                    $statusCode = (int) $m[1];
+                }
+            } catch (\Throwable $t) {
+                $curlError = $t->getMessage();
+            }
+        }
+
+        if ($rawBody === false) {
             return [
                 'status' => 'gagal',
-                'code'   => 500,
-                'pesan'  => 'Ekstensi PHP cURL (ext-curl) belum diaktifkan di server hosting. Mohon aktifkan ekstensi "curl" pada menu PHP Extensions / Select PHP Version di cPanel hosting.',
+                'code'   => 0,
+                'pesan'  => 'Gagal melakukan koneksi ke Meta Graph API (cURL / Stream error): ' . ($curlError ?: 'Koneksi jaringan server terputus.'),
                 'data'   => [],
             ];
         }
 
-        try {
-            // Gunakan native PHP cURL untuk menghindari CI4 CURLRequest baseURI conflict
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-            if (strtoupper($method) === 'GET') {
-                $absoluteUrl .= '?' . http_build_query($params);
-                curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
-            } else {
-                curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-            }
-
-            $rawBody    = curl_exec($ch);
-            $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError  = curl_error($ch);
-            curl_close($ch);
-
-            if ($rawBody === false) {
-                return [
-                    'status' => 'gagal',
-                    'code'   => 0,
-                    'pesan'  => 'cURL Error: ' . $curlError,
-                    'data'   => [],
-                ];
-            }
-
-            $body = json_decode($rawBody, true) ?? [];
+        $body = json_decode($rawBody, true) ?? [];
 
             // Sanitasi payload untuk log agar token/secret disamarkan
             $logPayload = $params;
