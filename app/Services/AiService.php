@@ -18,13 +18,13 @@ class AiService
             'timeout' => 30,
         ]);
 
-        // Kita ambil dari getenv, jika kosong berarti fitur AI dimatikan/belum dikonfigurasi
-        $this->apiKey = getenv('GEMINI_API_KEY');
+        // Ambil API key dari env / getenv / $_ENV
+        $this->apiKey = trim(env('GEMINI_API_KEY') ?: (getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? '')));
         $this->logModel = new AiGenerationLogModel();
     }
 
     /**
-     * Panggil Gemini API (Gemini 1.5 Flash)
+     * Panggil Gemini API dengan dukungan model aktif & fallback otomatis
      */
     protected function callGemini(string $prompt): string
     {
@@ -32,7 +32,13 @@ class AiService
             return "Fitur AI belum dikonfigurasi. Mohon isi GEMINI_API_KEY di file .env.";
         }
 
-        $url = '/v1beta/models/gemini-flash-latest:generateContent?key=' . $this->apiKey;
+        // Daftar model aktif dengan fallback otomatis
+        $availableModels = [
+            'gemini-3.5-flash-lite',
+            'gemini-3.1-flash-lite',
+            'gemini-3.5-flash',
+            'gemini-3.7-flash',
+        ];
 
         $payload = [
             'contents' => [
@@ -43,34 +49,44 @@ class AiService
                 ]
             ],
             'generationConfig' => [
-                'temperature' => 0.7,
+                'temperature'     => 0.7,
                 'maxOutputTokens' => 2048,
             ]
         ];
 
-        try {
-            $response = $this->client->post($url, [
-                'json' => $payload,
-                'headers' => ['Content-Type' => 'application/json'],
-                'http_errors' => false // agar bisa nangkep pesan error API
-            ]);
+        $lastErrorMsg = '';
 
-            $body = json_decode($response->getBody(), true);
+        foreach ($availableModels as $model) {
+            $url = '/v1beta/models/' . $model . ':generateContent?key=' . $this->apiKey;
 
-            if ($response->getStatusCode() !== 200) {
-                log_message('error', 'Gemini API Error: ' . $response->getBody());
-                return "Gagal memanggil API AI. Periksa konfigurasi API Key.";
+            try {
+                $response = $this->client->post($url, [
+                    'json'        => $payload,
+                    'headers'     => ['Content-Type' => 'application/json'],
+                    'http_errors' => false // agar bisa menangkap pesan error API
+                ]);
+
+                $statusCode = $response->getStatusCode();
+                $body = json_decode($response->getBody(), true);
+
+                if ($statusCode === 200 && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                    return $body['candidates'][0]['content']['parts'][0]['text'];
+                }
+
+                log_message('warning', "Gemini API Model {$model} returned status {$statusCode}: " . $response->getBody());
+
+                if ($statusCode === 401 || $statusCode === 403) {
+                    return "API Key Gemini tidak valid (Error {$statusCode}). Pastikan menggunakan API Key resmi Google AI Studio (berawalan 'AIzaSy...').";
+                }
+
+                $lastErrorMsg = $body['error']['message'] ?? "Status {$statusCode}";
+            } catch (\Throwable $e) {
+                log_message('error', "CURL Exception on model {$model}: " . $e->getMessage());
+                $lastErrorMsg = $e->getMessage();
             }
-
-            if (isset($body['candidates'][0]['content']['parts'][0]['text'])) {
-                return $body['candidates'][0]['content']['parts'][0]['text'];
-            }
-
-            return "AI tidak mengembalikan respon yang valid.";
-        } catch (\Exception $e) {
-            log_message('error', 'CURL Exception: ' . $e->getMessage());
-            return "Terjadi kesalahan koneksi ke server AI.";
         }
+
+        return "Gagal memanggil API AI: " . ($lastErrorMsg ?: 'Server AI sedang sibuk.');
     }
 
     /**

@@ -261,21 +261,14 @@ class JadwalUpload extends BaseController
             ]);
         }
 
-        // Validasi Jenis Konten: Harus Foto / Static Post
-        $namaJenis = strtolower($konten['nama_jenis'] ?? '');
-        if ($namaJenis !== 'static post' && $namaJenis !== 'foto') {
-            return $this->response->setStatusCode(400)->setJSON([
-                'status' => 'gagal',
-                'pesan'  => 'Publish otomatis hanya didukung untuk konten dengan tipe Foto / Static Post.',
-            ]);
-        }
+        $namaJenis = $konten['nama_jenis'] ?? '';
 
-        // Validasi Image URL
+        // Validasi Media URL
         $imageUrl = trim($konten['image_url'] ?? '');
         if (empty($imageUrl)) {
             return $this->response->setStatusCode(400)->setJSON([
                 'status' => 'gagal',
-                'pesan'  => 'Gambar konten belum diunggah. Silakan upload media gambar terlebih dahulu.',
+                'pesan'  => 'Media konten (gambar/video) belum diunggah. Silakan simpan link media terlebih dahulu.',
             ]);
         }
 
@@ -290,11 +283,11 @@ class JadwalUpload extends BaseController
         $caption = $konten['caption'] ?? '';
         $warning = null;
         if (empty(trim($caption))) {
-            $warning = 'Catatan: Caption konten kosong, publishing menyertakan gambar saja.';
+            $warning = 'Catatan: Caption konten kosong, publishing menyertakan media saja.';
         }
 
-        // Panggil service untuk publish
-        $result = $graphApiService->publishToInstagram($imageUrl, $caption);
+        // Panggil service untuk publish (mendukung Foto & Video/Reels)
+        $result = $graphApiService->publishToInstagram($imageUrl, $caption, $namaJenis);
 
         if ($result['status'] === 'sukses') {
             // Update status ke 'published' via TransisiKonten
@@ -335,6 +328,14 @@ class JadwalUpload extends BaseController
                 }
             }
 
+            // Update status auto-publish ke 'berhasil'
+            $this->model->protect(false)->update($id, [
+                'auto_publish_status' => 'berhasil',
+                'last_error'          => null,
+                'updated_at'          => date('Y-m-d H:i:s'),
+            ]);
+            $this->model->protect(true);
+
             return $this->response->setJSON([
                 'status'  => 'sukses',
                 'pesan'   => 'Berhasil mempublikasikan konten ke Instagram secara otomatis!',
@@ -354,6 +355,141 @@ class JadwalUpload extends BaseController
             ]);
         }
     }
+
+    /**
+     * POST /dashboard/jadwal-upload/jadwalkan/{id}
+     * Simpan jadwal publish otomatis (scheduled_at) untuk konten yang sudah di-ACC Final.
+     */
+    public function jadwalkan(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role = session('kode_role');
+
+        if (! in_array($role, ['admin_medsos', 'superadmin', 'owner'], true)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Anda tidak memiliki hak akses untuk menjadwalkan postingan.',
+            ]);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ]);
+        }
+
+        if ($konten['status'] !== 'acc_final') {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Hanya konten dengan status Acc Final yang dapat dijadwalkan untuk auto-publish.',
+            ]);
+        }
+
+        $rawScheduled = $this->request->getPost('scheduled_at');
+        if (empty($rawScheduled)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Tanggal dan jam jadwal publish wajib diisi.',
+            ]);
+        }
+
+        // Format datetime ke Y-m-d H:i:s
+        $scheduledTime = date('Y-m-d H:i:s', strtotime($rawScheduled));
+        if (! $scheduledTime || $scheduledTime === '1970-01-01 07:00:00') {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Format tanggal dan jam jadwal tidak valid.',
+            ]);
+        }
+
+        $imageUrl = trim($konten['image_url'] ?? '');
+        if (empty($imageUrl)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Media gambar belum diunggah. Silakan simpan link gambar publik terlebih dahulu sebelum menjadwalkan.',
+            ]);
+        }
+
+        // Simpan ke database
+        $this->model->protect(false)->update($id, [
+            'scheduled_at'        => $scheduledTime,
+            'auto_publish_status' => 'menunggu',
+            'publish_attempts'    => 0,
+            'last_error'          => null,
+            'updated_at'          => date('Y-m-d H:i:s'),
+        ]);
+        $this->model->protect(true);
+
+        return $this->response->setJSON([
+            'status' => 'sukses',
+            'pesan'  => 'Jadwal auto-publish berhasil disimpan untuk: ' . date('d M Y, H:i', strtotime($scheduledTime)) . ' WIB.',
+            'data'   => [
+                'id'                  => $id,
+                'scheduled_at'        => $scheduledTime,
+                'auto_publish_status' => 'menunggu',
+            ],
+        ]);
+    }
+
+    /**
+     * POST /dashboard/jadwal-upload/batal-jadwal/{id}
+     * Batalkan jadwal auto-publish.
+     */
+    public function batalJadwal(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $role = session('kode_role');
+
+        if (! in_array($role, ['admin_medsos', 'superadmin', 'owner'], true)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Anda tidak memiliki hak akses untuk membatalkan jadwal.',
+            ]);
+        }
+
+        $konten = $this->model->find($id);
+        if (! $konten) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status' => 'gagal',
+                'pesan'  => 'Konten tidak ditemukan.',
+            ]);
+        }
+
+        $this->model->protect(false)->update($id, [
+            'scheduled_at'        => null,
+            'auto_publish_status' => null,
+            'publish_attempts'    => 0,
+            'last_error'          => null,
+            'updated_at'          => date('Y-m-d H:i:s'),
+        ]);
+        $this->model->protect(true);
+
+        return $this->response->setJSON([
+            'status' => 'sukses',
+            'pesan'  => 'Jadwal auto-publish berhasil dibatalkan.',
+            'data'   => [
+                'id'                  => $id,
+                'scheduled_at'        => null,
+                'auto_publish_status' => null,
+            ],
+        ]);
+    }
+
+    /**
+     * POST|GET /dashboard/jadwal-upload/check-scheduled
+     * Endpoint background runner yang bisa dipanggil otomatis oleh browser (Web Ping / Local Fallback).
+     */
+    public function checkScheduled(): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $autoPublishService = new \App\Services\AutoPublishService();
+        $result = $autoPublishService->processDuePosts();
+
+        return $this->response->setJSON([
+            'status' => 'sukses',
+            'data'   => $result,
+        ]);
+    }
 }
+
 
 

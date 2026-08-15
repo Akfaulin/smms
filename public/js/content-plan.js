@@ -562,57 +562,12 @@ async function bukaDetail(id) {
         }
     }
 
-    // Setup Buka Gambar / Preview Button & Image URL field
-    const btnBukaGambar = document.getElementById('btnBukaGambar');
-    const inImageUrl = document.getElementById('inImageUrl');
-
-    if (inImageUrl) {
-        inImageUrl.value = k.image_url || '';
-        if (isReadOnlyMode && inImageUrl.parentElement) {
-            inImageUrl.parentElement.style.display = 'none'; // Hide edit input & simpan button for Read-Only roles
-            const noteEl = inImageUrl.parentElement.nextElementSibling;
-            if (noteEl && noteEl.tagName === 'DIV' && noteEl.textContent.includes('Google Drive')) {
-                noteEl.style.display = 'none';
-            }
-        } else if (inImageUrl.parentElement) {
-            inImageUrl.parentElement.style.display = 'flex';
-        }
-    }
-
-    if (btnBukaGambar) {
-        if (k.image_url && k.image_url.trim() !== '') {
-            btnBukaGambar.href = k.image_url;
-            btnBukaGambar.target = '_blank';
-            btnBukaGambar.removeAttribute('onclick');
-            btnBukaGambar.title = 'Buka gambar di tab baru';
-            btnBukaGambar.style.opacity = '';
-            btnBukaGambar.style.cursor = '';
-            btnBukaGambar.style.pointerEvents = '';
-            btnBukaGambar.style.filter = '';
-        } else {
-            btnBukaGambar.removeAttribute('href');
-            btnBukaGambar.removeAttribute('target');
-            btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi oleh Creator.', 'error'); return false;");
-            btnBukaGambar.title = 'Link gambar belum diisi';
-            btnBukaGambar.style.opacity = '0.45';
-            btnBukaGambar.style.cursor = 'not-allowed';
-            btnBukaGambar.style.pointerEvents = 'auto';
-            btnBukaGambar.style.filter = 'grayscale(0.7)';
-        }
-    }
+    // Render dynamic media box (Single Image/Video or Carousel Multi-Slide)
+    renderMediaBox(k, isReadOnlyMode);
 
     if (statusDesignUrl) {
         statusDesignUrl.style.display = 'none';
         statusDesignUrl.textContent = '';
-    }
-
-    // Reset status element and populate image URL field
-    const statusUpload = document.getElementById('uploadImageStatus');
-    if (inImageUrl) inImageUrl.value = k.image_url || '';
-
-    if (statusUpload) {
-        statusUpload.style.display = 'none';
-        statusUpload.textContent = '';
     }
 
     // Transition box
@@ -620,13 +575,67 @@ async function bukaDetail(id) {
     const namaJenis = (k.nama_jenis || '').toLowerCase();
     const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
 
-    // Auto Publish Box handling
+    // Auto Publish Box handling (Instant Manual Publish)
     const autoPublishBox = document.getElementById('autoPublishBox');
     if (autoPublishBox) {
-        if (isFoto && k.image_url && status !== 'published') {
+        if (k.image_url && status !== 'published') {
             autoPublishBox.style.display = 'block';
         } else {
             autoPublishBox.style.display = 'none';
+        }
+    }
+
+    // Schedule Publish Box handling (Background Scheduled Publishing)
+    const scheduleBox = document.getElementById('schedulePublishBox');
+    const inScheduledAt = document.getElementById('inScheduledAt');
+    const btnBatalJadwal = document.getElementById('btnBatalJadwal');
+    const scheduleBadge = document.getElementById('scheduleStatusBadge');
+    const scheduleErr = document.getElementById('scheduleErrorNote');
+
+    if (scheduleBox) {
+        if (status === 'acc_final' || k.auto_publish_status) {
+            scheduleBox.style.display = 'block';
+
+            if (inScheduledAt) {
+                if (k.scheduled_at) {
+                    inScheduledAt.value = k.scheduled_at.replace(' ', 'T').substring(0, 16);
+                } else if (k.tanggal_publish) {
+                    const dtStr = k.tanggal_publish.replace(' ', 'T').substring(0, 16);
+                    inScheduledAt.value = dtStr.includes('T') ? dtStr : dtStr + 'T10:00';
+                } else {
+                    inScheduledAt.value = '';
+                }
+            }
+
+            if (btnBatalJadwal) {
+                btnBatalJadwal.style.display = (k.auto_publish_status === 'menunggu') ? 'inline-flex' : 'none';
+            }
+
+            if (scheduleBadge) {
+                if (k.auto_publish_status === 'menunggu') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:3px 10px; border-radius:12px;">⏳ Menunggu Jadwal Auto-Publish</span>`;
+                } else if (k.auto_publish_status === 'diproses') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b45309; background:#fef3c7; padding:3px 10px; border-radius:12px;">⚡ Sedang Diproses Worker</span>`;
+                } else if (k.auto_publish_status === 'berhasil') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#15803d; background:#dcfce7; padding:3px 10px; border-radius:12px;">✔ Terjadwal Sukses (Published)</span>`;
+                } else if (k.auto_publish_status === 'gagal') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:3px 10px; border-radius:12px;">❌ Gagal (${k.publish_attempts || 0}/3)</span>`;
+                } else {
+                    scheduleBadge.innerHTML = '';
+                }
+            }
+
+            if (scheduleErr) {
+                if (k.last_error && k.auto_publish_status === 'gagal') {
+                    scheduleErr.style.display = 'block';
+                    scheduleErr.innerHTML = `<strong>Penyebab Kegagalan:</strong> ${escHtml(k.last_error)}`;
+                } else {
+                    scheduleErr.style.display = 'none';
+                    scheduleErr.textContent = '';
+                }
+            }
+        } else {
+            scheduleBox.style.display = 'none';
         }
     }
 
@@ -868,7 +877,71 @@ async function eksekusiPublishOtomatis() {
         toast(res ? res.pesan : 'Publish otomatis gagal.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Publish ke Instagram Sekarang (Otomatis)`;
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Publish ke Instagram Sekarang (Instan)`;
+        }
+    }
+}
+
+// ─── Auto-Publish Scheduling (Background Publishing) ──────
+
+async function simpanJadwalAutoPublish() {
+    if (!activeContent) return;
+    const inScheduledAt = document.getElementById('inScheduledAt');
+    const scheduledVal = (inScheduledAt?.value || '').trim();
+
+    if (!scheduledVal) {
+        toast('Silakan pilih tanggal dan jam jadwal publish terlebih dahulu.', 'error');
+        if (inScheduledAt) inScheduledAt.focus();
+        return;
+    }
+
+    const btn = document.getElementById('btnSimpanJadwal');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
+    }
+
+    const fd = new FormData();
+    fd.append('scheduled_at', scheduledVal);
+
+    const res = await api(`/dashboard/jadwal-upload/jadwalkan/${activeContent}`, 'POST', fd);
+
+    if (res && res.status === 'sukses') {
+        toast(res.pesan || 'Jadwal auto-publish berhasil disimpan!', 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        toast(res ? res.pesan : 'Gagal menyimpan jadwal.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `📅 Simpan Jadwal`;
+        }
+    }
+}
+
+async function batalkanJadwalAutoPublish() {
+    if (!activeContent) return;
+    if (!confirm('Apakah Anda yakin ingin membatalkan jadwal auto-publish untuk postingan ini?')) {
+        return;
+    }
+
+    const btn = document.getElementById('btnBatalJadwal');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Membatalkan...`;
+    }
+
+    const res = await api(`/dashboard/jadwal-upload/batal-jadwal/${activeContent}`, 'POST');
+
+    if (res && res.status === 'sukses') {
+        toast(res.pesan || 'Jadwal auto-publish berhasil dibatalkan.', 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        toast(res ? res.pesan : 'Gagal membatalkan jadwal.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `✕ Batalkan Jadwal`;
         }
     }
 }
@@ -1054,7 +1127,267 @@ async function simpanDesignUrl() {
 
 
 
-// ─── Save Image URL (Google Drive Link or Public URL) ─────────────────
+// ─── Dynamic Media Box (Single Image/Video & Carousel Multi-Slide) ───────────
+
+function parseSavedMediaUrls(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    raw = String(raw).trim();
+    if (raw.startsWith('[') && raw.endsWith(']')) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed.map(x => String(x).trim()).filter(Boolean);
+        } catch (e) {}
+    }
+    if (raw.includes('\n')) {
+        return raw.split(/[\r\n]+/).map(x => x.trim()).filter(Boolean);
+    }
+    return raw ? [raw] : [];
+}
+
+function bukaPreviewSlide(idx) {
+    const row = document.querySelector(`.carousel-slide-row[data-index="${idx}"]`);
+    const inp = row ? row.querySelector('.carousel-slide-inp') : null;
+    let url = (inp?.value || '').trim();
+    if (!url) {
+        toast(`Link Slide ${idx + 1} belum diisi. Paste link Google Drive terlebih dahulu.`, 'error');
+        return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function renderMediaBox(k, isReadOnlyMode) {
+    const box = document.getElementById('uploadImageBox');
+    if (!box) return;
+
+    const namaJenis = (k.nama_jenis || '').toLowerCase();
+    const isCarousel = namaJenis.includes('carousel') || namaJenis.includes('slider');
+    const urls = parseSavedMediaUrls(k.image_url);
+
+    if (isCarousel) {
+        // Render Carousel multi-link UI
+        let slides = urls.length > 0 ? urls : [''];
+
+        let slidesHtml = slides.map((url, idx) => `
+            <div class="carousel-slide-row" data-index="${idx}" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                <span class="slide-num-label" style="font-size:12px; font-weight:600; color:#4f46e5; min-width:54px;">Slide ${idx + 1}:</span>
+                <input type="text" class="cp-inp carousel-slide-inp" value="${escHtml(url)}" placeholder="Paste link Google Drive slide ${idx + 1}..." style="flex:1; font-size:12.5px; padding:7px 10px; border-radius:6px;" oninput="refreshCarouselSlideNumbers()" ${isReadOnlyMode ? 'readonly disabled' : ''}>
+                <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${idx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:3px; ${url ? 'background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600;' : 'opacity:0.45; filter:grayscale(0.7); cursor:pointer;'}" title="Preview Slide ${idx + 1}">
+                    Preview ↗
+                </button>
+                ${(!isReadOnlyMode && slides.length > 1) ? `<button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${idx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer;" title="Hapus Slide">✕</button>` : ''}
+            </div>
+        `).join('');
+
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px; font-size:13.5px;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                    Link Media Carousel (Multi-Slide)
+                </div>
+                <span id="carouselCountBadge" style="font-size:11.5px; font-weight:600; background:#e0e7ff; color:#4338ca; padding:2px 10px; border-radius:12px;">
+                    ${slides.filter(Boolean).length} / ${slides.length} Slide
+                </span>
+            </div>
+            <p style="font-size:11.5px; color:var(--cp-muted); margin-bottom:10px; line-height:1.4;">
+                Konten Carousel mendukung multi-gambar/video (hingga 10 slide). Masukkan link Google Drive per slide.
+            </p>
+            <div id="carouselSlidesList">
+                ${slidesHtml}
+            </div>
+            ${!isReadOnlyMode ? `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:8px;">
+                <button type="button" class="cpb cpb-sec" id="btnTambahSlide" onclick="tambahSlideCarousel()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:4px; background:#f8fafc; border:1px solid #cbd5e1; color:#334155;">
+                    ➕ Tambah Slide
+                </button>
+                <button type="button" class="cpb cpb-pri" id="btnSimpanCarousel" onclick="simpanCarouselUrls()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
+                    💾 Simpan Semua Slide
+                </button>
+            </div>
+            ` : ''}
+            <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
+        `;
+    } else {
+        // Render Single Media UI (Photo / Video / Reels / Story)
+        const singleUrl = urls[0] || '';
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Link Media Konten (Foto / Video)
+                </div>
+                <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; ${singleUrl ? '' : 'opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);'}" ${singleUrl ? `href="${escHtml(singleUrl)}"` : `onclick="toast('Link media belum diisi.', 'error'); return false;"`}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Preview ↗
+                </a>
+            </div>
+            ${!isReadOnlyMode ? `
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="inImageUrl" class="cp-inp" value="${escHtml(singleUrl)}" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
+                <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
+                    Simpan Link
+                </button>
+            </div>
+            <div style="font-size:11px; color:var(--cp-muted); margin-top:6px; display:flex; align-items:flex-start; gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Pastikan file di Google Drive sudah di-share dengan akses <strong>"Anyone with the link"</strong> agar bisa diakses sistem. Link Drive akan otomatis dikonversi ke format direct-access.
+            </div>
+            ` : (singleUrl ? `<div style="font-size:13px; color:var(--cp-text); background:#f8fafc; padding:8px 12px; border-radius:8px; word-break:break-all;">${escHtml(singleUrl)}</div>` : `<div style="font-size:13px; color:var(--cp-muted); font-style:italic;">(Belum ada file media)</div>`)}
+            <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
+        `;
+    }
+}
+
+function tambahSlideCarousel() {
+    const container = document.getElementById('carouselSlidesList');
+    if (!container) return;
+    const currentRows = container.querySelectorAll('.carousel-slide-row');
+    if (currentRows.length >= 10) {
+        toast('Batas maksimal Carousel adalah 10 slide.', 'warning');
+        return;
+    }
+
+    const nextIdx = currentRows.length;
+    const newRow = document.createElement('div');
+    newRow.className = 'carousel-slide-row';
+    newRow.dataset.index = nextIdx;
+    newRow.style.cssText = 'display:flex; gap:6px; align-items:center; margin-bottom:6px;';
+    newRow.innerHTML = `
+        <span class="slide-num-label" style="font-size:12px; font-weight:600; color:#4f46e5; min-width:54px;">Slide ${nextIdx + 1}:</span>
+        <input type="text" class="cp-inp carousel-slide-inp" placeholder="Paste link Google Drive slide ${nextIdx + 1}..." style="flex:1; font-size:12.5px; padding:7px 10px; border-radius:6px;" oninput="refreshCarouselSlideNumbers()">
+        <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${nextIdx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:3px; opacity:0.45; filter:grayscale(0.7); cursor:pointer;" title="Preview Slide ${nextIdx + 1}">
+            Preview ↗
+        </button>
+        <button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${nextIdx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer;" title="Hapus Slide">✕</button>
+    `;
+    container.appendChild(newRow);
+
+    refreshCarouselSlideNumbers();
+}
+
+function hapusSlideCarousel(idx) {
+    const container = document.getElementById('carouselSlidesList');
+    if (!container) return;
+    const rows = container.querySelectorAll('.carousel-slide-row');
+    if (rows.length <= 1) {
+        const inp = container.querySelector('.carousel-slide-inp');
+        if (inp) inp.value = '';
+        return;
+    }
+    if (rows[idx]) {
+        rows[idx].remove();
+    }
+    refreshCarouselSlideNumbers();
+}
+
+function refreshCarouselSlideNumbers() {
+    const container = document.getElementById('carouselSlidesList');
+    if (!container) return;
+    const rows = container.querySelectorAll('.carousel-slide-row');
+    const badge = document.getElementById('carouselCountBadge');
+
+    let filledCount = 0;
+    rows.forEach((row, i) => {
+        row.dataset.index = i;
+        const span = row.querySelector('.slide-num-label');
+        if (span) span.textContent = `Slide ${i + 1}:`;
+
+        const previewBtn = row.querySelector('.btn-preview-slide');
+        if (previewBtn) {
+            previewBtn.setAttribute('onclick', `bukaPreviewSlide(${i})`);
+            previewBtn.title = `Preview Slide ${i + 1}`;
+        }
+
+        const delBtn = row.querySelector('.btn-del-slide');
+        if (delBtn) {
+            delBtn.setAttribute('onclick', `hapusSlideCarousel(${i})`);
+            delBtn.style.display = rows.length > 1 ? 'inline-block' : 'none';
+        }
+
+        const inp = row.querySelector('.carousel-slide-inp');
+        const val = (inp?.value || '').trim();
+        if (val) {
+            filledCount++;
+            if (previewBtn) {
+                previewBtn.style.opacity = '1';
+                previewBtn.style.filter = 'none';
+                previewBtn.style.background = '#f0fdf4';
+                previewBtn.style.border = '1px solid #bbf7d0';
+                previewBtn.style.color = '#16a34a';
+                previewBtn.style.fontWeight = '600';
+            }
+        } else {
+            if (previewBtn) {
+                previewBtn.style.opacity = '0.45';
+                previewBtn.style.filter = 'grayscale(0.7)';
+                previewBtn.style.background = '';
+                previewBtn.style.border = '';
+                previewBtn.style.color = '';
+                previewBtn.style.fontWeight = '';
+            }
+        }
+    });
+
+    if (badge) {
+        badge.textContent = `${filledCount} / ${rows.length} Slide`;
+    }
+}
+
+async function simpanCarouselUrls() {
+    if (!activeContent) return;
+    const inps = document.querySelectorAll('.carousel-slide-inp');
+    const urls = Array.from(inps).map(inp => inp.value.trim()).filter(Boolean);
+
+    const btn = document.getElementById('btnSimpanCarousel');
+    const statusEl = document.getElementById('uploadImageStatus');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
+    }
+
+    const fd = new FormData();
+    urls.forEach(u => fd.append('image_urls[]', u));
+    if (urls.length === 0) {
+        fd.append('image_url', '');
+    }
+
+    const res = await api(`/dashboard/content-plan/image-url/${activeContent}`, 'POST', fd);
+
+    if (res && res.status === 'sukses') {
+        const savedUrl = res.data.image_url || '';
+        toast(`Berhasil menyimpan ${res.data.slide_count || urls.length} slide Carousel!`, 'success');
+
+        const allKonten = window.ALL_KONTEN || [];
+        const item = allKonten.find(x => x.id == activeContent);
+        if (item) item.image_url = savedUrl;
+
+        // Refresh auto publish box
+        const autoPublishBox = document.getElementById('autoPublishBox');
+        if (autoPublishBox) {
+            autoPublishBox.style.display = savedUrl ? 'block' : 'none';
+        }
+
+        // Re-render media box
+        if (item) {
+            renderMediaBox(item, window.IS_ADMIN_MEDSOS_VIEW || false);
+        }
+
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.textContent = `✓ ${urls.length} link slide Carousel tersimpan!`;
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
+        }
+    } else {
+        toast(res ? res.pesan : 'Gagal menyimpan link Carousel.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `💾 Simpan Semua Slide`;
+        }
+    }
+}
+
+// ─── Save Single Image URL (Google Drive Link or Public URL) ─────────────────
 async function simpanImageUrl() {
     if (!activeContent) return;
     const inUrl    = document.getElementById('inImageUrl');
@@ -1075,7 +1408,7 @@ async function simpanImageUrl() {
 
     if (res && res.status === 'sukses') {
         const savedUrl = res.data.image_url || '';
-        toast('Link gambar berhasil disimpan!', 'success');
+        toast('Link media berhasil disimpan!', 'success');
 
         // Update in-memory cache
         const allKonten = window.ALL_KONTEN || [];
@@ -1099,18 +1432,15 @@ async function simpanImageUrl() {
             const isDrive = savedUrl.includes('drive.google.com/uc');
             statusEl.style.display = 'block';
             statusEl.textContent = savedUrl
-                ? '✓ Link gambar tersimpan' + (isDrive ? ' (Drive link dikonversi ✓)' : '')
-                : '✓ Link gambar telah dihapus';
+                ? '✓ Link media tersimpan' + (isDrive ? ' (Drive link dikonversi ✓)' : '')
+                : '✓ Link media telah dihapus';
             setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
         }
 
         // Refresh tombol auto-publish visibility
         const autoPublishBox = document.getElementById('autoPublishBox');
         if (autoPublishBox) {
-            const cachedItem = (window.ALL_KONTEN || []).find(x => x.id == activeContent);
-            const namaJenis = (cachedItem?.nama_jenis || '').toLowerCase();
-            const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
-            autoPublishBox.style.display = (isFoto && savedUrl) ? 'block' : 'none';
+            autoPublishBox.style.display = savedUrl ? 'block' : 'none';
         }
 
         // Update Buka Gambar / Preview Button state
@@ -1120,7 +1450,7 @@ async function simpanImageUrl() {
                 btnBukaGambar.href = savedUrl;
                 btnBukaGambar.target = '_blank';
                 btnBukaGambar.removeAttribute('onclick');
-                btnBukaGambar.title = 'Buka gambar di tab baru';
+                btnBukaGambar.title = 'Buka media di tab baru';
                 btnBukaGambar.style.opacity = '';
                 btnBukaGambar.style.cursor = '';
                 btnBukaGambar.style.pointerEvents = '';
@@ -1128,8 +1458,8 @@ async function simpanImageUrl() {
             } else {
                 btnBukaGambar.removeAttribute('href');
                 btnBukaGambar.removeAttribute('target');
-                btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;");
-                btnBukaGambar.title = 'Link gambar belum diisi';
+                btnBukaGambar.setAttribute('onclick', "toast('Link media belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link.', 'error'); return false;");
+                btnBukaGambar.title = 'Link media belum diisi';
                 btnBukaGambar.style.opacity = '0.45';
                 btnBukaGambar.style.cursor = 'not-allowed';
                 btnBukaGambar.style.pointerEvents = 'auto';
@@ -1137,12 +1467,12 @@ async function simpanImageUrl() {
             }
         }
     } else {
-        toast(res ? res.pesan : 'Gagal menyimpan link gambar.', 'error');
+        toast(res ? res.pesan : 'Gagal menyimpan link media.', 'error');
     }
 
     if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Simpan Link Gambar';
+        btn.textContent = 'Simpan Link';
     }
 }
 
@@ -1320,6 +1650,25 @@ document.addEventListener('DOMContentLoaded', () => {
     buildCalendar();
     buildList();
     updateLegendCount();
+
+    // Auto background trigger for scheduled posts (Localhost / Browser fallback)
+    if (window.IS_ADMIN_MEDSOS_VIEW || location.pathname.includes('jadwal-upload')) {
+        const pingScheduledPosts = async () => {
+            try {
+                const res = await api('/dashboard/jadwal-upload/check-scheduled', 'POST');
+                if (res && res.status === 'sukses' && res.data && (res.data.sukses > 0 || res.data.gagal > 0)) {
+                    toast(`Auto-publish scheduler: ${res.data.sukses} postingan berhasil dipublish otomatis!`, res.data.sukses > 0 ? 'success' : 'warning');
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } catch (e) {
+                // Silent catch
+            }
+        };
+
+        // Run on load and every 30 seconds
+        setTimeout(pingScheduledPosts, 1000);
+        setInterval(pingScheduledPosts, 30000);
+    }
 });
 
 // ─── AI Idea Generator (Uses global renderMarkdown from app.js) ───────────

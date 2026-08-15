@@ -58,6 +58,9 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->get('jadwal-upload', 'JadwalUpload::index');
     $routes->post('jadwal-upload/publish/(:num)', 'JadwalUpload::publish/$1');
     $routes->post('jadwal-upload/publish-otomatis/(:num)', 'JadwalUpload::publishOtomatis/$1');
+    $routes->post('jadwal-upload/jadwalkan/(:num)', 'JadwalUpload::jadwalkan/$1');
+    $routes->post('jadwal-upload/batal-jadwal/(:num)', 'JadwalUpload::batalJadwal/$1');
+    $routes->match(['GET', 'POST'], 'jadwal-upload/check-scheduled', 'JadwalUpload::checkScheduled');
     $routes->get('kalender-tayang', 'KalenderTayang::index');
     $routes->get('audit-trail', 'AuditTrail::index');
     $routes->get('audit-trail/detail/(:num)', 'AuditTrail::detail/$1');

@@ -524,10 +524,9 @@ class ContentPlan extends BaseController
             return $this->jsonGagal('Konten tidak ditemukan.', 404);
         }
 
-        // Hanya pembuat konten yang bisa generate caption di tahap in_design,
-        // atau superadmin/owner.
-        if ($konten['status'] !== 'in_design') {
-            return $this->jsonGagal('Caption AI hanya dapat di-generate pada tahap In Design.', 400);
+        // Cek jika konten sudah published
+        if ($konten['status'] === 'published') {
+            return $this->jsonGagal('Konten yang sudah dipublish tidak dapat di-generate ulang captionnya.', 400);
         }
 
         $judul    = $konten['judul_konten'];
@@ -565,7 +564,7 @@ class ContentPlan extends BaseController
         }
 
         // Pengecekan otorisasi role
-        if (! in_array($kodeRole, ['content_creator', 'creative_team', 'manager', 'superadmin', 'owner'], true)) {
+        if (! in_array($kodeRole, ['content_creator', 'creative_team', 'manager', 'admin_medsos', 'superadmin', 'owner'], true)) {
             return $this->jsonGagal('Anda tidak berwenang mengubah caption.', 403);
         }
 
@@ -716,35 +715,56 @@ class ContentPlan extends BaseController
             return $this->jsonGagal('Anda tidak berwenang mengubah gambar konten.', 403);
         }
 
-        // Support both POST form data and JSON payload
-        $postVal = $this->request->getPost('image_url') ?? $this->request->getVar('image_url');
-        if ($postVal !== null) {
-            $imageUrl = (string) $postVal;
+        $graphService = new \App\Services\GraphApiService();
+
+        // Support array of image_urls[] or single image_url
+        $postUrls = $this->request->getPost('image_urls') ?? $this->request->getVar('image_urls');
+        $postVal  = $this->request->getPost('image_url')  ?? $this->request->getVar('image_url');
+
+        $urlsToProcess = [];
+
+        if (is_array($postUrls)) {
+            $urlsToProcess = $postUrls;
+        } elseif ($postVal !== null) {
+            $urlsToProcess = $graphService->parseMediaUrls((string)$postVal);
         } else {
-            $json     = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON(true) : [];
-            $imageUrl = (string) ($json['image_url'] ?? '');
-        }
-        $imageUrl = trim($imageUrl);
-
-        // Validasi format URL jika tidak kosong
-        if (! empty($imageUrl) && ! filter_var($imageUrl, FILTER_VALIDATE_URL)) {
-            return $this->jsonGagal('Format URL tidak valid (harus diawali http:// atau https://).', 422);
+            $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON(true) : [];
+            if (isset($json['image_urls']) && is_array($json['image_urls'])) {
+                $urlsToProcess = $json['image_urls'];
+            } elseif (isset($json['image_url'])) {
+                $urlsToProcess = $graphService->parseMediaUrls((string)$json['image_url']);
+            }
         }
 
-        // Konversi Google Drive share link → direct-access URL sebelum disimpan
-        if (! empty($imageUrl)) {
-            $graphService = new \App\Services\GraphApiService();
-            $imageUrl = $graphService->convertDriveLink($imageUrl);
+        $cleanedUrls = [];
+        foreach ($urlsToProcess as $u) {
+            $strUrl = trim((string)$u);
+            if (empty($strUrl)) {
+                continue;
+            }
+
+            if (! filter_var($strUrl, FILTER_VALIDATE_URL)) {
+                return $this->jsonGagal('Format URL tidak valid: ' . htmlspecialchars($strUrl) . ' (harus diawali http:// atau https://).', 422);
+            }
+
+            $cleanedUrls[] = $graphService->convertDriveLink($strUrl);
+        }
+
+        $finalValue = null;
+        if (count($cleanedUrls) > 1) {
+            $finalValue = json_encode(array_values($cleanedUrls));
+        } elseif (count($cleanedUrls) === 1) {
+            $finalValue = $cleanedUrls[0];
         }
 
         $updateData = [
-            'image_url'  => $imageUrl ?: null,
+            'image_url'  => $finalValue,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
 
         $statusChanged = false;
         $newStatus = $konten['status'];
-        if (! empty($imageUrl) && in_array($kodeRole, ['content_creator', 'creative_team', 'superadmin', 'owner'], true)) {
+        if (! empty($finalValue) && in_array($kodeRole, ['content_creator', 'creative_team', 'superadmin', 'owner'], true)) {
             $trans = $this->tryAutoTransitionToReviewDesign($konten, $userId, 'Desainer melampirkan link gambar/Drive baru. Otomatis beralih ke Review Desain.');
             if ($trans) {
                 $updateData['status'] = $trans;
@@ -756,8 +776,11 @@ class ContentPlan extends BaseController
         $this->model->protect(false)->update($id, $updateData);
         $this->model->protect(true);
 
-        return $this->jsonSukses('Link gambar berhasil disimpan' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
-            'image_url'      => $imageUrl,
+        return $this->jsonSukses('Link media konten berhasil disimpan' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
+            'image_url'      => $finalValue,
+            'urls'           => $cleanedUrls,
+            'is_carousel'    => count($cleanedUrls) > 1,
+            'slide_count'    => count($cleanedUrls),
             'status'         => $newStatus,
             'status_changed' => $statusChanged,
         ]);
