@@ -45,12 +45,22 @@ class ContentPlan extends BaseController
         $userId   = session('user_id');
         $bisnisId = (int) session('bisnis_aktif_id');
 
-        // Filter: default 'my_ideas' untuk creative_team, 'my_tasks' untuk role lain
-        $defaultView = ($role === 'creative_team') ? 'my_ideas' : 'my_tasks';
+        // Filter: default 'all' agar kalender & daftar konten langsung tampil lengkap
+        $defaultView = 'all';
         $viewMode    = $this->request->getGet('view') ?? $defaultView;
 
         // Filter by bisnis aktif
         $query = $this->model->withRelasi()->byBisnis($bisnisId);
+
+        // Poin 10 & 14: Kalender & Content Plan Content Creator HANYA menampilkan tugas aktif yang ditugaskan kepada desainer tersebut
+        if ($role === 'content_creator' && $viewMode !== 'my_ideas') {
+            $query->whereNotIn('content_plan.status', ['ide_diajukan', 'ditolak']);
+            $query->groupStart()
+                  ->where('content_plan.assigned_designer', $userId)
+                  ->orWhere('content_plan.dibuat_oleh', $userId)
+                  ->orWhere('content_plan.assigned_designer IS NULL')
+                  ->groupEnd();
+        }
 
         if ($viewMode === 'my_tasks') {
             if ($role === 'manager') {
@@ -65,7 +75,7 @@ class ContentPlan extends BaseController
                       ->whereIn('content_plan.status', ['acc_ide', 'in_design', 'revisi'])
                       ->groupStart()
                           ->where('content_plan.assigned_designer', $userId)
-                          ->orWhere('content_plan.dibuat_oleh', $userId)
+                          ->orWhere('content_plan.assigned_designer IS NULL')
                       ->groupEnd()
                       ->groupEnd();
             } elseif ($role === 'admin_medsos') {
@@ -80,9 +90,52 @@ class ContentPlan extends BaseController
             }
         } elseif ($viewMode === 'my_ideas') {
             $query->where('content_plan.dibuat_oleh', $userId);
+        } elseif ($viewMode === 'overdue') {
+            $nowStr = date('Y-m-d H:i:s');
+            $query->where('content_plan.tanggal_publish IS NOT NULL')
+                  ->where('content_plan.tanggal_publish <', $nowStr)
+                  ->whereNotIn('content_plan.status', ['published', 'ditolak', 'ide_diajukan']);
         }
 
-        $konten = $query->orderBy('content_plan.created_at', 'DESC')->findAll();
+        // Poin 3: Sortir default tanggal publish paling mepet
+        $sortBy = $this->request->getGet('sort') ?: 'publish_mepet';
+        switch ($sortBy) {
+            case 'publish_jauh':
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'DESC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terbaru':
+                $query->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terlama':
+                $query->orderBy('content_plan.created_at', 'ASC');
+                break;
+            case 'publish_mepet':
+            default:
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'ASC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+        }
+
+        $konten = $query->findAll();
+
+        // Hitung total konten yang lewat tenggat (overdue) untuk tab & badge
+        $nowStr = date('Y-m-d H:i:s');
+        $overdueBld = $this->model->byBisnis($bisnisId)
+            ->where('content_plan.tanggal_publish IS NOT NULL')
+            ->where('content_plan.tanggal_publish <', $nowStr)
+            ->whereNotIn('content_plan.status', ['published', 'ditolak']);
+        if ($role === 'content_creator') {
+            $overdueBld->whereNotIn('content_plan.status', ['ide_diajukan', 'ditolak', 'published'])
+                       ->groupStart()
+                           ->where('content_plan.assigned_designer', $userId)
+                           ->orWhere('content_plan.dibuat_oleh', $userId)
+                           ->orWhere('content_plan.assigned_designer IS NULL')
+                       ->groupEnd();
+        }
+        $totalOverdue = (int) $overdueBld->countAllResults();
 
         // Sertakan platforms per konten (GROUP_CONCAT)
         foreach ($konten as &$k) {
@@ -120,10 +173,10 @@ class ContentPlan extends BaseController
             ->groupEnd()
             ->get()->getResultArray();
 
-        // Users per role untuk assigned_designer & assigned_uploader
+        // List user untuk assignment
         $allUsers     = $db->table('users u')
             ->select('u.id, u.nama, r.kode_role')
-            ->join('roles r', 'r.id = u.role_id', 'left')
+            ->join('roles r', 'r.id = u.role_id')
             ->where('u.status', 'aktif')
             ->get()->getResultArray();
 
@@ -139,6 +192,8 @@ class ContentPlan extends BaseController
             'uploaders'    => array_values($uploaders),
             'kode_role'    => $role,
             'viewMode'     => $viewMode,
+            'sortBy'       => $sortBy,
+            'totalOverdue' => $totalOverdue,
             'judul'        => 'Content Plan',
         ]);
     }
@@ -292,6 +347,20 @@ class ContentPlan extends BaseController
         // Update caption jika dikirim
         if ($this->request->getPost('caption') !== null) {
             $data['caption'] = trim((string) $this->request->getPost('caption')) ?: null;
+        }
+
+        // Update design_url & image_url jika dikirim
+        if ($this->request->getPost('design_url') !== null) {
+            $data['design_url'] = trim((string) $this->request->getPost('design_url')) ?: null;
+        }
+        if ($this->request->getPost('image_url') !== null) {
+            $iUrl = trim((string) $this->request->getPost('image_url'));
+            if (! empty($iUrl) && str_contains($iUrl, 'drive.google.com')) {
+                $graphService = new \App\Services\GraphApiService();
+                $data['image_url'] = $graphService->convertDriveLink($iUrl);
+            } else {
+                $data['image_url'] = $iUrl ?: null;
+            }
         }
 
         // Opsional: assigned_designer & assigned_uploader boleh diset oleh manager/owner/superadmin
@@ -568,6 +637,7 @@ class ContentPlan extends BaseController
     /**
      * POST /dashboard/content-plan/design-url/{id}
      * Simpan / update link desain Canva / Figma untuk konten.
+     * Poin 12: Otomatis beralih ke review_design saat desainer melampirkan link desain.
      */
     public function updateDesignUrl(int $id): \CodeIgniter\HTTP\ResponseInterface
     {
@@ -599,21 +669,41 @@ class ContentPlan extends BaseController
             return $this->jsonGagal('Format URL link desain tidak valid (harus diawali http:// atau https://).', 422);
         }
 
-        $this->model->update($id, [
+        $updateData = [
             'design_url' => $designUrl ?: null,
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
 
-        return $this->jsonSukses('Link desain berhasil disimpan.', ['design_url' => $designUrl]);
+        $statusChanged = false;
+        $newStatus = $konten['status'];
+        if (! empty($designUrl) && in_array($kodeRole, ['content_creator', 'creative_team', 'superadmin', 'owner'], true)) {
+            $trans = $this->tryAutoTransitionToReviewDesign($konten, $userId, 'Desainer melampirkan link Canva/Figma baru. Otomatis beralih ke Review Desain.');
+            if ($trans) {
+                $updateData['status'] = $trans;
+                $newStatus = $trans;
+                $statusChanged = true;
+            }
+        }
+
+        $this->model->protect(false)->update($id, $updateData);
+        $this->model->protect(true);
+
+        return $this->jsonSukses('Link desain berhasil disimpan' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
+            'design_url'     => $designUrl,
+            'status'         => $newStatus,
+            'status_changed' => $statusChanged,
+        ]);
     }
 
     /**
      * POST /dashboard/content-plan/image-url/{id}
      * Simpan / update URL gambar konten (Google Drive link atau URL publik langsung).
      * Link Drive otomatis dikonversi ke format direct-access oleh GraphApiService::convertDriveLink().
+     * Poin 12: Otomatis beralih ke review_design jika desainer melampirkan link gambar.
      */
     public function updateImageUrl(int $id): \CodeIgniter\HTTP\ResponseInterface
     {
+        $userId   = (int) session('user_id');
         $kodeRole = session('kode_role');
         $konten   = $this->model->find($id);
 
@@ -667,23 +757,39 @@ class ContentPlan extends BaseController
             $finalValue = $cleanedUrls[0];
         }
 
-        $this->model->protect(false)->update($id, [
+        $updateData = [
             'image_url'  => $finalValue,
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        $statusChanged = false;
+        $newStatus = $konten['status'];
+        if (! empty($finalValue) && in_array($kodeRole, ['content_creator', 'creative_team', 'superadmin', 'owner'], true)) {
+            $trans = $this->tryAutoTransitionToReviewDesign($konten, $userId, 'Desainer melampirkan link gambar/Drive baru. Otomatis beralih ke Review Desain.');
+            if ($trans) {
+                $updateData['status'] = $trans;
+                $newStatus = $trans;
+                $statusChanged = true;
+            }
+        }
+
+        $this->model->protect(false)->update($id, $updateData);
         $this->model->protect(true);
 
-        return $this->jsonSukses('Link media konten berhasil disimpan.', [
-            'image_url'   => $finalValue,
-            'urls'        => $cleanedUrls,
-            'is_carousel' => count($cleanedUrls) > 1,
-            'slide_count' => count($cleanedUrls),
+        return $this->jsonSukses('Link media konten berhasil disimpan' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
+            'image_url'      => $finalValue,
+            'urls'           => $cleanedUrls,
+            'is_carousel'    => count($cleanedUrls) > 1,
+            'slide_count'    => count($cleanedUrls),
+            'status'         => $newStatus,
+            'status_changed' => $statusChanged,
         ]);
     }
 
     /**
      * POST /dashboard/content-plan/upload-image/{id}
      * Handle upload file gambar lokal untuk konten (JPG, JPEG, PNG, max 5MB).
+     * Poin 12: Otomatis beralih ke review_design jika desainer mengunggah file gambar.
      */
     public function uploadImage(int $id): \CodeIgniter\HTTP\ResponseInterface
     {
@@ -726,15 +832,136 @@ class ContentPlan extends BaseController
 
         $imageUrl = base_url('uploads/content-images/' . $newName);
 
-        $this->model->update($id, [
+        $updateData = [
             'image_url'  => $imageUrl,
             'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        ];
 
-        return $this->jsonSukses('Gambar konten berhasil diunggah.', [
-            'image_url' => $imageUrl,
-            'file_name' => $newName,
+        $statusChanged = false;
+        $newStatus = $konten['status'];
+        if (in_array($kodeRole, ['content_creator', 'creative_team', 'superadmin', 'owner'], true)) {
+            $trans = $this->tryAutoTransitionToReviewDesign($konten, $userId, 'Desainer mengunggah file gambar materi baru. Otomatis beralih ke Review Desain.');
+            if ($trans) {
+                $updateData['status'] = $trans;
+                $newStatus = $trans;
+                $statusChanged = true;
+            }
+        }
+
+        $this->model->protect(false)->update($id, $updateData);
+        $this->model->protect(true);
+
+        return $this->jsonSukses('Gambar konten berhasil diunggah' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
+            'image_url'      => $imageUrl,
+            'file_name'      => $newName,
+            'status'         => $newStatus,
+            'status_changed' => $statusChanged,
         ]);
+    }
+
+    /**
+     * POST /dashboard/content-plan/update-details/{id}
+     * Poin 11: Simpan Desain & Caption Sekaligus (Unified Batch Update & Auto-Save).
+     * Poin 12: Otomatis ubah status ke review_design jika link desain diisi desainer.
+     */
+    public function updateDetails(int $id): \CodeIgniter\HTTP\ResponseInterface
+    {
+        $userId   = (int) session('user_id');
+        $kodeRole = session('kode_role');
+        $konten   = $this->model->find($id);
+
+        if (! $konten) {
+            return $this->jsonGagal('Konten tidak ditemukan.', 404);
+        }
+
+        if (! in_array($kodeRole, ['content_creator', 'creative_team', 'manager', 'superadmin', 'owner', 'admin_medsos'], true)) {
+            return $this->jsonGagal('Anda tidak berwenang mengubah data konten ini.', 403);
+        }
+
+        // Support both POST form data and JSON payload
+        $postCaption   = $this->request->getPost('caption') ?? $this->request->getVar('caption');
+        $postDesignUrl = $this->request->getPost('design_url') ?? $this->request->getVar('design_url');
+        $postImageUrl  = $this->request->getPost('image_url') ?? $this->request->getVar('image_url');
+        $autoSubmit    = (bool) ($this->request->getPost('auto_submit') ?? $this->request->getVar('auto_submit'));
+
+        $updateData = ['updated_at' => date('Y-m-d H:i:s')];
+
+        if ($postCaption !== null) {
+            $updateData['caption'] = trim((string)$postCaption) ?: null;
+        }
+
+        if ($postDesignUrl !== null) {
+            $dUrl = trim((string)$postDesignUrl);
+            if (! empty($dUrl) && ! filter_var($dUrl, FILTER_VALIDATE_URL)) {
+                return $this->jsonGagal('Format URL link desain tidak valid (harus diawali http:// atau https://).', 422);
+            }
+            $updateData['design_url'] = $dUrl ?: null;
+        }
+
+        if ($postImageUrl !== null) {
+            $iUrl = trim((string)$postImageUrl);
+            if (! empty($iUrl)) {
+                if (str_contains($iUrl, 'drive.google.com')) {
+                    $graphService = new \App\Services\GraphApiService();
+                    $directUrl = $graphService->convertDriveLink($iUrl);
+                    $updateData['image_url'] = $directUrl;
+                } else {
+                    $updateData['image_url'] = $iUrl;
+                }
+            } else {
+                $updateData['image_url'] = null;
+            }
+        }
+
+        // Poin 12: Jika creator melampirkan link desain/gambar dan status masih 'acc_ide', 'in_design', atau 'revisi' -> otomatis ke 'review_design'
+        $statusChanged = false;
+        $newStatus = $konten['status'];
+        $hasNewAsset = (!empty($updateData['design_url']) || !empty($updateData['image_url']));
+        if (($autoSubmit || $hasNewAsset) && in_array($kodeRole, ['content_creator', 'creative_team', 'superadmin', 'owner'], true)) {
+            $trans = $this->tryAutoTransitionToReviewDesign($konten, $userId, 'Desainer melampirkan materi desain & caption. Sistem otomatis memindahkan status ke Review Desain.');
+            if ($trans) {
+                $updateData['status'] = $trans;
+                $newStatus = $trans;
+                $statusChanged = true;
+            }
+        }
+
+        $this->model->protect(false)->update($id, $updateData);
+        $this->model->protect(true);
+
+        return $this->jsonSukses('Desain & Caption berhasil disimpan' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
+            'caption'        => $updateData['caption'] ?? $konten['caption'],
+            'design_url'     => $updateData['design_url'] ?? $konten['design_url'],
+            'image_url'      => $updateData['image_url'] ?? $konten['image_url'],
+            'status'         => $newStatus,
+            'status_changed' => $statusChanged,
+        ]);
+    }
+
+    /**
+     * Helper Poin 12: Otomatis transisi ke 'review_design' jika desainer melampirkan materi desain.
+     */
+    private function tryAutoTransitionToReviewDesign(array $konten, int $userId, string $catatan): ?string
+    {
+        $statusLama = $konten['status'];
+        if (in_array($statusLama, ['acc_ide', 'in_design', 'revisi'], true)) {
+            $db = \Config\Database::connect();
+            $db->table('content_status_log')->insert([
+                'content_id'  => $konten['id'],
+                'status_lama' => $statusLama,
+                'status_baru' => 'review_design',
+                'user_id'     => $userId,
+                'catatan'     => $catatan,
+                'created_at'  => date('Y-m-d H:i:s'),
+            ]);
+
+            // Kirim notifikasi ke Manager
+            $notifService = new \App\Services\NotificationService();
+            $notifService->notifikasiTransisi($konten, $statusLama, 'review_design', $userId);
+
+            return 'review_design';
+        }
+        return null;
     }
 
     // =========================================================================

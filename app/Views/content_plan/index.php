@@ -55,6 +55,15 @@ $roleNow   = $kode_role ?? session('kode_role');
             <div class="cp-stat-lbl">Perlu Revisi</div>
         </div>
     </div>
+    <div class="cp-stat" onclick="window.location.href='?view=overdue'" style="cursor:pointer;" title="Klik untuk lihat konten lewat tenggat">
+        <div class="cp-stat-icon" style="background:#fee2e2; color:#dc2626;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div>
+            <div class="cp-stat-val" style="color:#dc2626;"><?= $totalOverdue ?? 0 ?></div>
+            <div class="cp-stat-lbl" style="color:#dc2626; font-weight:700;">Lewat Tenggat</div>
+        </div>
+    </div>
 </div>
 
 <!-- ── Main Card ─────────────────────────────────────────── -->
@@ -77,6 +86,9 @@ $roleNow   = $kode_role ?? session('kode_role');
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> Antrean Tugas
                 </a>
                 <a href="?view=all" class="cp-tog <?= ($viewMode === 'all') ? 'active' : '' ?>">Semua Konten</a>
+                <a href="?view=overdue" class="cp-tog <?= ($viewMode === 'overdue') ? 'active' : '' ?>" style="<?= ($viewMode === 'overdue') ? 'background:#ef4444;color:#fff;' : 'color:#dc2626;' ?>">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:2px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Lewat Tenggat (<?= $totalOverdue ?? 0 ?>)
+                </a>
             </div>
 
             <!-- Search Box -->
@@ -84,6 +96,7 @@ $roleNow   = $kode_role ?? session('kode_role');
 
             <select class="cp-sel" id="filterStatus" onchange="renderView()">
                 <option value="">Semua Status</option>
+                <option value="overdue">Lewat Tenggat (Overdue)</option>
                 <option value="ide_diajukan">Ide Diajukan</option>
                 <option value="acc_ide">Acc Ide</option>
                 <option value="in_design">In Design</option>
@@ -98,6 +111,12 @@ $roleNow   = $kode_role ?? session('kode_role');
                 <?php foreach ($platforms as $p): ?>
                 <option value="<?= $p['id'] ?>"><?= esc($p['nama_platform']) ?></option>
                 <?php endforeach; ?>
+            </select>
+            <select class="cp-sel" id="filterSort" onchange="renderView()">
+                <option value="publish_mepet">Publish (Paling Mepet)</option>
+                <option value="publish_jauh">Publish (Paling Jauh)</option>
+                <option value="diajukan_terbaru">Diajukan (Terbaru)</option>
+                <option value="diajukan_terlama">Diajukan (Terlama)</option>
             </select>
             <div class="cp-toggle-wrap">
                 <button class="cp-tog active" id="togCal" onclick="switchView('cal')">
@@ -151,12 +170,12 @@ $roleNow   = $kode_role ?? session('kode_role');
             <table class="cp-ltbl">
                 <thead>
                     <tr>
-                        <th style="width:32px">#</th>
-                        <th>Judul Konten</th>
-                        <th>Status</th>
-                        <th>Platform</th>
-                        <th>Tgl Publish</th>
-                        <th>Dibuat Oleh</th>
+                        <th style="width:36px; text-align:center;">#</th>
+                        <th style="width:30%;">Judul Konten</th>
+                        <th style="width:16%;">Status</th>
+                        <th style="width:14%;">Platform</th>
+                        <th style="width:24%;">Jadwal & Waktu</th>
+                        <th style="width:16%;">Dibuat Oleh</th>
                     </tr>
                 </thead>
                 <tbody id="listBody"></tbody>
@@ -298,72 +317,66 @@ $roleNow   = $kode_role ?? session('kode_role');
             </div>
             <div class="cp-det-desc" id="detDesc" style="display:none;margin-top:16px;"></div>
 
-            <!-- AI & Manual Caption Box -->
-            <div class="cp-caption-box" id="captionBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        Caption Konten
+            <!-- Unified Design, Asset & Caption Box (Poin 11 & 12) -->
+            <div class="cp-unified-box" style="margin-top:16px; border:1.5px solid #e2e8f0; border-radius:14px; padding:18px; background:#fafbfc; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #edf2f7; padding-bottom:10px;">
+                    <div style="font-weight:800; font-size:14px; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
+                        Materi Desain & Copywriting Konten
                     </div>
                     <button type="button" class="cpb cpb-sec" id="btnAiCaption" style="padding:6px 12px; font-size:12px; display:none; background:#f0f9ff; border:1px solid #bae6fd; color:#0284c7; font-weight:600; border-radius:8px;" onclick="generateAiCaption()">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI
                     </button>
                 </div>
-                <div>
-                    <textarea id="inCaptionText" class="cp-inp" rows="4" placeholder="Tulis caption manual atau gunakan bantuan AI di atas..." style="width:100%; font-size:13.5px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:90px;"></textarea>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                        <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none;"></div>
-                        <button type="button" class="cpb cpb-pri" id="btnSimpanCaption" onclick="simpanCaptionManual()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
-                            Simpan Caption
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Link Desain Canva Box -->
-            <div class="cp-design-box" id="designBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c4cc" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
-                        Link Desain Canva / Figma
-                    </div>
-                    <a id="btnBukaCanva" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link desain belum diisi" onclick="toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan Link.', 'error'); return false;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                        Buka Canva ↗
-                    </a>
+                <!-- Caption Field -->
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:12px; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
+                        Caption Postingan (Copywriting & Hashtag)
+                    </label>
+                    <textarea id="inCaptionText" class="cp-inp" rows="4" placeholder="Tulis caption lengkap atau gunakan bantuan AI..." style="width:100%; font-size:13px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:85px; background:#fff;"></textarea>
+                    <div id="detCaption" style="display:none; font-size:13.5px; line-height:1.6; color:#1e293b; background:#fff; border:1px solid #e2e8f0; padding:12px; border-radius:8px;"></div>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva/Figma di sini (https://canva.com/design/...)" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanDesignUrl" onclick="simpanDesignUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                        Simpan Link
+
+                <!-- Link Canva & Link Google Drive Grid -->
+                <div id="gridDesainLinks" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                    <!-- Link Canva / Figma -->
+                    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <label style="font-size:12px; font-weight:700; color:#334155; margin:0; display:flex; align-items:center; gap:5px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00c4cc" stroke-width="2.2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
+                                Link Canva / Figma
+                            </label>
+                            <a id="btnBukaCanva" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:4px 8px; font-size:11px; text-decoration:none; display:inline-flex; align-items:center; gap:3px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:700; border-radius:6px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link desain belum diisi" onclick="toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan.', 'error'); return false;">
+                                Buka Canva ↗
+                            </a>
+                        </div>
+                        <input type="url" id="inDesignUrl" class="cp-inp" placeholder="https://canva.com/design/..." style="width:100%; font-size:12.5px; padding:7px 10px; border-radius:8px;">
+                    </div>
+
+                    <!-- Link Gambar Drive / URL -->
+                    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <label style="font-size:12px; font-weight:700; color:#334155; margin:0; display:flex; align-items:center; gap:5px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                Link Gambar / Drive
+                            </label>
+                            <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:4px 8px; font-size:11px; text-decoration:none; display:inline-flex; align-items:center; gap:3px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:700; border-radius:6px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link gambar belum diisi" onclick="toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan.', 'error'); return false;">
+                                Preview ↗
+                            </a>
+                        </div>
+                        <input type="text" id="inImageUrl" class="cp-inp" placeholder="https://drive.google.com/file/d/..." style="width:100%; font-size:12.5px; padding:7px 10px; border-radius:8px;">
+                    </div>
+                </div>
+
+                <!-- Unified 1-Click Save Action Button -->
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px dashed #e2e8f0; padding-top:14px;">
+                    <div id="unifiedSaveStatus" style="font-size:12px; color:#16a34a; font-weight:700; display:none; align-items:center; gap:4px;"></div>
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanUnified" onclick="simpanDesainDanCaption()" style="padding:9px 20px; font-size:12.5px; font-weight:700; border-radius:10px; background:#2563eb; color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(37,99,235,0.25); margin-left:auto;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Simpan Desain & Caption Sekaligus
                     </button>
                 </div>
-                <div id="designUrlStatus" style="font-size:12px; color:#16a34a; margin-top:6px; display:none; font-weight:500;"></div>
-            </div>
-
-            <!-- Link Gambar / Google Drive Box -->
-            <div class="cp-upload-box" id="uploadImageBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                        Link Gambar Konten
-                    </div>
-                    <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link gambar belum diisi" onclick="toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                        Preview ↗
-                    </a>
-                </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="inImageUrl" class="cp-inp" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                        Simpan Link Gambar
-                    </button>
-                </div>
-                <div style="font-size:11px; color:var(--cp-muted); margin-top:6px; display:flex; align-items:flex-start; gap:4px;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                    Pastikan file di Google Drive sudah di-share dengan akses <strong>"Anyone with the link"</strong> agar bisa diakses sistem. Link Drive akan otomatis dikonversi ke format direct-access.
-                </div>
-                <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
             </div>
 
             <!-- Transition Box -->

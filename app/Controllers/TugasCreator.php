@@ -37,11 +37,15 @@ class TugasCreator extends BaseController
 
         $query = $this->model->withRelasi()->byBisnis($bisnisId);
 
-        // Content Creator memonitoring tugas yang ditugaskan kepadanya (assigned_designer) atau dibuat olehnya
+        // Poin 10: Sembunyikan Ide dari Dashboard Creator sebelum di-ACC Manager!
+        // Creator HANYA menerima dan melihat tugas desain setelah ide resmi di-ACC (status: acc_ide, in_design, review_design, revisi, acc_final, published).
+        $query->whereNotIn('content_plan.status', ['ide_diajukan', 'ditolak']);
+
+        // Content Creator memonitoring tugas yang ditugaskan kepadanya atau tugas unassigned yang siap dikerjakan
         if ($role === 'content_creator') {
             $query->groupStart()
                   ->where('content_plan.assigned_designer', $userId)
-                  ->orWhere('content_plan.dibuat_oleh', $userId)
+                  ->orWhere('content_plan.assigned_designer IS NULL')
                   ->groupEnd();
         }
 
@@ -54,9 +58,36 @@ class TugasCreator extends BaseController
             $query->where('content_plan.status', 'revisi');
         } elseif ($filterStatus === 'completed') {
             $query->whereIn('content_plan.status', ['acc_final', 'published']);
+        } elseif ($filterStatus === 'overdue') {
+            $nowStr = date('Y-m-d H:i:s');
+            $query->where('content_plan.tanggal_publish IS NOT NULL')
+                  ->where('content_plan.tanggal_publish <', $nowStr)
+                  ->whereNotIn('content_plan.status', ['published', 'ditolak', 'ide_diajukan']);
         }
 
-        $konten = $query->orderBy('content_plan.created_at', 'DESC')->findAll();
+        // Poin 3: Sortir default tanggal publish paling mepet
+        $sortBy = $this->request->getGet('sort') ?: 'publish_mepet';
+        switch ($sortBy) {
+            case 'publish_jauh':
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'DESC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terbaru':
+                $query->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terlama':
+                $query->orderBy('content_plan.created_at', 'ASC');
+                break;
+            case 'publish_mepet':
+            default:
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'ASC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+        }
+
+        $konten = $query->findAll();
 
         // Join platforms
         foreach ($konten as &$k) {
@@ -70,21 +101,26 @@ class TugasCreator extends BaseController
         }
         unset($k);
 
-        // Calculate summary metrics (filter by bisnis)
-        $baseCountQuery = $db->table('content_plan')->where('bisnis_id', $bisnisId);
+        // Calculate summary metrics (filter by bisnis & ACC-ed only)
+        $baseCountQuery = $db->table('content_plan')
+            ->where('bisnis_id', $bisnisId)
+            ->whereNotIn('status', ['ide_diajukan', 'ditolak']);
+
         if ($role === 'content_creator') {
             $baseCountQuery->groupStart()
                            ->where('assigned_designer', $userId)
-                           ->orWhere('dibuat_oleh', $userId)
+                           ->orWhere('assigned_designer IS NULL')
                            ->groupEnd();
         }
 
         $allTaskData = $baseCountQuery->get()->getResultArray();
+        $nowStr      = date('Y-m-d H:i:s');
 
         $statInDesign   = count(array_filter($allTaskData, fn($i) => in_array($i['status'], ['acc_ide', 'in_design'], true)));
         $statReview     = count(array_filter($allTaskData, fn($i) => $i['status'] === 'review_design'));
         $statRevisi     = count(array_filter($allTaskData, fn($i) => $i['status'] === 'revisi'));
         $statCompleted  = count(array_filter($allTaskData, fn($i) => in_array($i['status'], ['acc_final', 'published'], true)));
+        $statOverdue    = count(array_filter($allTaskData, fn($i) => !empty($i['tanggal_publish']) && $i['tanggal_publish'] < $nowStr && !in_array($i['status'], ['published', 'ditolak', 'ide_diajukan'], true)));
 
         // Master data untuk form & modal (filter by bisnis + global fallback)
         $platforms    = $db->table('platforms')
@@ -116,7 +152,9 @@ class TugasCreator extends BaseController
             'statReview'    => $statReview,
             'statRevisi'    => $statRevisi,
             'statCompleted' => $statCompleted,
+            'statOverdue'   => $statOverdue,
             'filterStatus'  => $filterStatus,
+            'sortBy'        => $sortBy,
             'platforms'     => $platforms,
             'jenisKonten'   => $jenisKonten,
             'contentTypes'  => $contentTypes,
