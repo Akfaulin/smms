@@ -97,12 +97,13 @@ class AiService
             return "Fitur AI belum dikonfigurasi. Mohon isi GEMINI_API_KEY di file .env.";
         }
 
-        // Daftar model aktif dengan fallback otomatis
+        // Daftar model aktif Gemini yang didukung Google API saat ini
         $availableModels = [
-            'gemini-2.5-flash-lite',
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
-            'gemini-1.5-flash',
+            'gemini-3.5-flash-lite',
+            'gemini-3.5-flash',
+            'gemini-3.7-flash',
+            'gemini-3.1-flash-lite',
+            'gemini-3-flash-preview',
         ];
 
         $payload = [
@@ -144,10 +145,12 @@ class AiService
                     log_message('warning', "Gemini API Model {$model} returned status {$statusCode}: " . $response->getBody());
 
                     if ($statusCode === 401 || $statusCode === 403) {
-                        return "API Key Gemini tidak valid (Error {$statusCode}). Pastikan menggunakan API Key resmi Google AI Studio (berawalan 'AIzaSy...').";
+                        return "API Key Gemini tidak valid (Error {$statusCode}). Pastikan menggunakan API Key resmi Google AI Studio (berawalan 'AIzaSy...' atau 'AQ...').";
                     }
 
-                    $lastErrorMsg = $body['error']['message'] ?? "Status {$statusCode}";
+                    if (isset($body['error']['message'])) {
+                        $lastErrorMsg = $body['error']['message'];
+                    }
                 } else {
                     // Fallback 1: PHP stream (file_get_contents)
                     $body = $this->postViaStream($fullUrl, $payload);
