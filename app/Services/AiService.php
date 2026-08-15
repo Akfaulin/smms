@@ -53,6 +53,42 @@ class AiService
     }
 
     /**
+     * Fallback HTTP POST via raw SSL Socket (fsockopen) jika cURL dan file_get_contents dinonaktifkan
+     */
+    protected function postViaSocket(string $path, array $payload): ?array
+    {
+        $jsonPayload = json_encode($payload);
+        $host = 'generativelanguage.googleapis.com';
+        $port = 443;
+
+        $fp = @fsockopen("ssl://{$host}", $port, $errno, $errstr, 20);
+        if (! $fp) {
+            return null;
+        }
+
+        $out  = "POST {$path} HTTP/1.1\r\n";
+        $out .= "Host: {$host}\r\n";
+        $out .= "Content-Type: application/json\r\n";
+        $out .= "Content-Length: " . strlen($jsonPayload) . "\r\n";
+        $out .= "Connection: Close\r\n\r\n";
+        $out .= $jsonPayload;
+
+        fwrite($fp, $out);
+        $response = '';
+        while (! feof($fp)) {
+            $response .= fgets($fp, 4096);
+        }
+        fclose($fp);
+
+        $parts = explode("\r\n\r\n", $response, 2);
+        if (isset($parts[1])) {
+            return json_decode($parts[1], true);
+        }
+
+        return null;
+    }
+
+    /**
      * Panggil Gemini API dengan dukungan model aktif & fallback otomatis
      */
     protected function callGemini(string $prompt): string
@@ -113,8 +149,13 @@ class AiService
 
                     $lastErrorMsg = $body['error']['message'] ?? "Status {$statusCode}";
                 } else {
-                    // Fallback via PHP stream
+                    // Fallback 1: PHP stream (file_get_contents)
                     $body = $this->postViaStream($fullUrl, $payload);
+                    if (! $body) {
+                        // Fallback 2: Direct SSL socket
+                        $body = $this->postViaSocket($path, $payload);
+                    }
+
                     if ($body && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
                         return $body['candidates'][0]['content']['parts'][0]['text'];
                     }
@@ -124,19 +165,20 @@ class AiService
                 }
             } catch (\Throwable $e) {
                 log_message('error', "Exception on Gemini model {$model}: " . $e->getMessage());
-                // Jika error curl_exec, coba stream fallback
-                if (!$hasCurl || str_contains($e->getMessage(), 'curl_exec')) {
-                    $body = $this->postViaStream($fullUrl, $payload);
-                    if ($body && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
-                        return $body['candidates'][0]['content']['parts'][0]['text'];
-                    }
+                // Jika error curl_exec, coba stream / socket fallback
+                $body = $this->postViaStream($fullUrl, $payload);
+                if (! $body) {
+                    $body = $this->postViaSocket($path, $payload);
+                }
+                if ($body && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                    return $body['candidates'][0]['content']['parts'][0]['text'];
                 }
                 $lastErrorMsg = $e->getMessage();
             }
         }
 
-        if (!$hasCurl && empty($lastErrorMsg)) {
-            return "Ekstensi PHP cURL (ext-curl) belum aktif di hosting. Mohon aktifkan ekstensi 'curl' pada menu 'Select PHP Version' -> 'Extensions' di cPanel hosting.";
+        if (! $hasCurl && empty($lastErrorMsg)) {
+            return "Ekstensi PHP cURL belum aktif di hosting. Mohon centang 'curl' pada menu 'Select PHP Version' -> 'Extensions' di cPanel hosting Anda.";
         }
 
         return "Gagal memanggil API AI: " . ($lastErrorMsg ?: 'Server AI sedang sibuk.');
