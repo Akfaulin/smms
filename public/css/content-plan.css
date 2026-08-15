@@ -193,39 +193,49 @@
 }
 
 /* ── Calendar ───────────────────────────────────────────── */
+#viewCal {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .cp-cal-head {
-    display: grid; grid-template-columns: repeat(7, 1fr);
-    border-bottom: 1px solid var(--cp-border);
+    display: grid; grid-template-columns: repeat(7, minmax(115px, 1fr));
+    min-width: 820px;
+    border-bottom: 1.5px solid var(--cp-border);
+    background: #fafbfc;
 }
 
 .cp-cal-head-cell {
-    padding: 9px 0; text-align: center;
-    font-size: 10.5px; font-weight: 700;
+    padding: 10px 0; text-align: center;
+    font-size: 11px; font-weight: 800;
     color: var(--cp-muted); letter-spacing: .8px; text-transform: uppercase;
 }
 
 .cp-cal-head-cell.we { color: #ef4444; }
 
 .cp-cal-body {
-    display: grid; grid-template-columns: repeat(7, 1fr);
+    display: grid; grid-template-columns: repeat(7, minmax(115px, 1fr));
+    min-width: 820px;
 }
 
 .cp-day {
-    min-height: 90px;
+    min-height: 125px;
+    height: auto;
     border-right: 1px solid var(--cp-border);
     border-bottom: 1px solid var(--cp-border);
-    padding: 7px 7px 5px;
+    padding: 8px 8px 14px;
     position: relative; cursor: pointer;
+    display: flex; flex-direction: column;
     transition: background .12s;
 }
 
 .cp-day:nth-child(7n) { border-right: none; }
-.cp-day.empty { background: #fafbfd; cursor: default; pointer-events: none; }
-.cp-day.past  { background: #fafbfd; cursor: pointer; }
+.cp-day.empty { background: #f8fafc; cursor: default; pointer-events: none; }
+.cp-day.past  { background: #fcfcfd; cursor: pointer; }
 .cp-day.past .cp-day-num { color: var(--cp-muted); }
 .cp-day:not(.empty):hover { background: var(--cp-blue-l); }
-.cp-day.past:hover { background: #f1f2f6; }
-.cp-day.today .cp-day-num { background: var(--cp-blue); color: #fff; border-radius: 50%; }
+.cp-day.past:hover { background: #f1f5f9; }
+.cp-day.today .cp-day-num { background: var(--cp-blue); color: #fff; border-radius: 50%; font-weight: 800; }
 .cp-day.we .cp-day-num { color: #ef4444; }
 .cp-day.past.we .cp-day-num { color: #fca5a5; }
 
@@ -233,23 +243,27 @@
     font-size: 12.5px; font-weight: 700; color: var(--cp-text);
     width: 24px; height: 24px;
     display: flex; align-items: center; justify-content: center;
-    margin-bottom: 4px;
+    margin-bottom: 6px; flex-shrink: 0;
 }
 
 .cp-day-evs {
-    display: flex; flex-direction: column; gap: 2px;
-    overflow: hidden; max-height: 52px;
+    display: flex; flex-direction: column; gap: 4px;
+    overflow: visible; max-height: none;
+    flex: 1; width: 100%;
 }
 
 .cp-epill {
-    font-size: 10px; font-weight: 600;
-    padding: 2px 6px; border-radius: 5px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    line-height: 1.5; cursor: pointer;
-    transition: opacity .15s;
+    font-size: 11px; font-weight: 600;
+    padding: 4px 7px; border-radius: 6px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35; cursor: pointer;
+    transition: all .15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    display: block;
 }
 
-.cp-epill:hover { opacity: .88; transform: translateY(-1px); }
+.cp-epill:hover { opacity: .92; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
 .cp-epill.ide_diajukan  { background: #fef3c7; color: #b45309; border-left: 3px solid #f59e0b; }
 .cp-epill.revisi        { background: #ffedd5; color: #c2410c; border-left: 3px solid #ea580c; }
 .cp-epill.acc_ide       { background: #e0f2fe; color: #0369a1; border-left: 3px solid #0284c7; }
@@ -261,27 +275,30 @@
 /* Legacy fallbacks */
 .cp-epill.acc           { background: #e0f2fe; color: #0369a1; border-left: 3px solid #0284c7; }
 .cp-epill.draft         { background: #fef3c7; color: #b45309; border-left: 3px solid #f59e0b; }
-.cp-epill.past-pill     { opacity: .55; }
+.cp-epill.past-pill     { opacity: .65; }
 
 .cp-more {
-    font-size: 10px; font-weight: 700;
+    font-size: 10.5px; font-weight: 700;
     color: var(--cp-blue); background: var(--cp-blue-l);
-    border-radius: 5px; padding: 1px 5px; display: inline-block;
+    border: 1px solid var(--cp-blue-m);
+    border-radius: 6px; padding: 2px 7px; display: inline-block;
+    margin-top: 2px; text-align: center; cursor: pointer;
 }
 
 .cp-add-hint {
-    position: absolute; bottom: 5px; right: 6px;
-    font-size: 10px; color: var(--cp-blue); opacity: 0; transition: opacity .15s;
+    position: absolute; bottom: 4px; right: 6px;
+    font-size: 10px; font-weight: 700; color: var(--cp-blue); opacity: 0; transition: opacity .15s;
+    background: #eff6ff; padding: 1px 5px; border-radius: 4px;
 }
 
 .cp-day:not(.empty):not(.past):hover .cp-add-hint { opacity: 1; }
 
 .cp-lock-hint {
-    position: absolute; bottom: 5px; right: 6px;
-    font-size: 9px; color: var(--cp-muted); opacity: 0; transition: opacity .15s;
+    position: absolute; bottom: 4px; right: 6px;
+    font-size: 10px; color: var(--cp-muted); opacity: 0; transition: opacity .15s;
 }
 
-.cp-day.past:hover .cp-lock-hint { opacity: 1; }
+.cp-day.past:hover .cp-lock-hint { opacity: 0.8; }
 
 /* ── List Table ─────────────────────────────────────────── */
 .cp-ltbl { width: 100%; border-collapse: collapse; }

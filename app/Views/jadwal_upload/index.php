@@ -62,6 +62,15 @@ $roleNow = $kode_role ?? session('kode_role');
             <div class="ik-stat-lbl">Total Data Posting</div>
         </div>
     </div>
+    <div class="ik-stat-card" onclick="window.location.href='?status=overdue'" style="cursor:pointer;" title="Klik untuk lihat konten lewat tenggat">
+        <div class="ik-stat-icon" style="background:#fee2e2; color:#dc2626;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div>
+            <div class="ik-stat-val" style="color:#dc2626;"><?= $statOverdue ?? 0 ?></div>
+            <div class="ik-stat-lbl" style="color:#dc2626; font-weight:700;">Lewat Tenggat</div>
+        </div>
+    </div>
 </div>
 
 <!-- ── Main Data Card ──────────────────────────────────────── -->
@@ -86,12 +95,22 @@ $roleNow = $kode_role ?? session('kode_role');
                 <svg class="ik-tog-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                 Sudah Published
             </a>
+            <a href="?status=overdue" class="cp-tog <?= ($filterStatus === 'overdue') ? 'active' : '' ?>" style="<?= ($filterStatus === 'overdue') ? 'background:#ef4444;color:#fff;' : 'color:#dc2626;' ?>">
+                <svg class="ik-tog-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Lewat Tenggat (<?= $statOverdue ?? 0 ?>)
+            </a>
         </div>
 
-        <div class="cp-filters">
+        <div class="cp-filters" style="display:flex; align-items:center; gap:8px;">
+            <select id="filterSort" class="cp-inp" style="width:auto; padding:7px 12px; font-size:12px; font-weight:700; border-radius:10px; border:1.5px solid #cbd5e1; cursor:pointer; background:#fff;" onchange="gantiSort(this.value)">
+                <option value="publish_mepet" <?= ($sortBy === 'publish_mepet') ? 'selected' : '' ?>>Publish (Paling Mepet)</option>
+                <option value="publish_jauh" <?= ($sortBy === 'publish_jauh') ? 'selected' : '' ?>>Publish (Paling Jauh)</option>
+                <option value="diajukan_terbaru" <?= ($sortBy === 'diajukan_terbaru') ? 'selected' : '' ?>>Diajukan (Terbaru)</option>
+                <option value="diajukan_terlama" <?= ($sortBy === 'diajukan_terlama') ? 'selected' : '' ?>>Diajukan (Terlama)</option>
+            </select>
             <div style="position:relative;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" id="searchQuery" class="cp-inp" style="width:230px; padding:8px 12px 8px 34px; font-size:12.5px; border-radius:10px; border:1px solid #cbd5e1; outline:none;" placeholder="Cari konten posting..." oninput="renderIdeList()">
+                <input type="text" id="searchQuery" class="cp-inp" style="width:200px; padding:7px 12px 7px 34px; font-size:12.5px; border-radius:10px; border:1.5px solid #cbd5e1; outline:none;" placeholder="Cari konten posting..." oninput="renderIdeList()">
             </div>
         </div>
     </div>
@@ -102,10 +121,10 @@ $roleNow = $kode_role ?? session('kode_role');
             <thead>
                 <tr>
                     <th style="width:40px; text-align:center;">#</th>
-                    <th style="width:28%;">Judul & Brief Konten</th>
-                    <th style="width:18%;">Status Upload</th>
-                    <th style="width:16%;">Platform</th>
-                    <th style="width:14%; white-space:nowrap;">Tanggal Publish</th>
+                    <th style="width:26%;">Judul & Brief Konten</th>
+                    <th style="width:16%;">Status Upload</th>
+                    <th style="width:14%;">Platform</th>
+                    <th style="width:20%; white-space:nowrap;">Jadwal & Waktu</th>
                     <th style="width:12%;">Designer</th>
                     <th style="text-align:right; width:12%;">Aksi</th>
                 </tr>
@@ -150,8 +169,52 @@ $roleNow = $kode_role ?? session('kode_role');
                     <td style="font-size:13px; color:#475569; font-weight:500;">
                         <?= esc($k['platform_str'] ?: '—') ?>
                     </td>
-                    <td style="font-size:13px; color:#334155; font-weight:600; white-space:nowrap;">
-                        <?= $k['tanggal_publish'] ? date('d M Y', strtotime($k['tanggal_publish'])) : '—' ?>
+                    <td>
+                        <?php if ($k['tanggal_publish']): ?>
+                            <?php 
+                            $tglPub = strtotime($k['tanggal_publish']);
+                            $todayMid = strtotime('today');
+                            $pubMid   = strtotime(date('Y-m-d', $tglPub));
+                            $diffDays = (int) round(($pubMid - $todayMid) / 86400);
+                            $isPast   = ($tglPub < time());
+                            $timeStr  = (strlen($k['tanggal_publish']) > 10) ? date('H:i', $tglPub) : '';
+                            $timeDisplay = ($timeStr && $timeStr !== '00:00') ? ', ' . $timeStr : '';
+                            ?>
+                            <div style="font-size:12.5px; font-weight:700; color:#0f172a; white-space:nowrap; display:flex; align-items:center; gap:5px;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <?= date('d M Y', $tglPub) . $timeDisplay ?>
+                            </div>
+                            <?php if ($k['status'] === 'published'): ?>
+                                <span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Tayang
+                                </span>
+                            <?php elseif ($isPast): ?>
+                                <span style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Lewat Tenggat
+                                </span>
+                            <?php elseif ($diffDays === 0): ?>
+                                <span style="background:#fef3c7; color:#d97706; border:1px solid #fde68a; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Hari Ini
+                                </span>
+                            <?php elseif ($diffDays === 1): ?>
+                                <span style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Besok
+                                </span>
+                            <?php else: ?>
+                                <span style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <?= $diffDays ?> Hari Lagi
+                                </span>
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span style="color:#94a3b8; font-size:12px; font-style:italic;">Belum dijadwalkan</span>
+                        <?php endif; ?>
+
+                        <?php if (!empty($k['created_at'])): ?>
+                            <div style="font-size:11px; color:#64748b; margin-top:4px; white-space:nowrap; display:flex; align-items:center; gap:4px;">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                Diajukan: <?= date('d M Y, H:i', strtotime($k['created_at'])) ?>
+                            </div>
+                        <?php endif; ?>
                     </td>
                     <td style="font-size:13px; color:#475569; font-weight:500;">
                         <span style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; padding:3px 10px; border-radius:12px; font-size:12px; color:#334155; font-weight:600;">
@@ -284,7 +347,8 @@ $roleNow = $kode_role ?? session('kode_role');
                 </div>
                 <p style="font-size:12.5px; color:#166534; margin-bottom:12px; line-height:1.4;">Konten ini bertipe Foto/Static Post dan memiliki gambar publik. Anda dapat mempublikasikannya langsung ke Instagram secara otomatis.</p>
                 <button type="button" class="cpb" id="btnAutoPublish" onclick="eksekusiPublishOtomatis()" style="width:100%; background:#16a34a; color:#fff; font-weight:600; padding:10px; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                    🚀 Publish ke Instagram Sekarang (Otomatis)
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Publish ke Instagram Sekarang (Otomatis)
                 </button>
             </div>
 
@@ -343,6 +407,12 @@ $roleNow = $kode_role ?? session('kode_role');
             const text = tr.textContent.toLowerCase();
             tr.style.display = (!query || text.includes(query)) ? '' : 'none';
         });
+    }
+
+    function gantiSort(val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('sort', val);
+        window.location.href = url.toString();
     }
 </script>
 <script src="/js/content-plan.js?v=<?= time() ?>"></script>

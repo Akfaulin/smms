@@ -32,6 +32,7 @@ class ApprovalManager extends BaseController
         }
 
         $filterStatus = $this->request->getGet('status') ?? 'all';
+        $sortBy       = $this->request->getGet('sort') ?: 'publish_mepet';
         $bisnisId     = (int) session('bisnis_aktif_id');
 
         $query = $this->model->withRelasi()->byBisnis($bisnisId);
@@ -45,9 +46,35 @@ class ApprovalManager extends BaseController
             $query->whereIn('content_plan.status', ['acc_ide', 'in_design', 'acc_final', 'published']);
         } elseif ($filterStatus === 'revision') {
             $query->where('content_plan.status', 'revisi');
+        } elseif ($filterStatus === 'overdue') {
+            $nowStr = date('Y-m-d H:i:s');
+            $query->where('content_plan.tanggal_publish IS NOT NULL')
+                  ->where('content_plan.tanggal_publish <', $nowStr)
+                  ->whereNotIn('content_plan.status', ['published', 'ditolak']);
         }
 
-        $konten = $query->orderBy('content_plan.created_at', 'DESC')->findAll();
+        // Poin 3: Sortir default tanggal publish paling mepet
+        switch ($sortBy) {
+            case 'publish_jauh':
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'DESC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terbaru':
+                $query->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terlama':
+                $query->orderBy('content_plan.created_at', 'ASC');
+                break;
+            case 'publish_mepet':
+            default:
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'ASC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+        }
+
+        $konten = $query->findAll();
 
         // Join platforms
         foreach ($konten as &$k) {
@@ -63,11 +90,13 @@ class ApprovalManager extends BaseController
 
         // Calculate summary metrics (filter by bisnis)
         $allData = $db->table('content_plan')->where('bisnis_id', $bisnisId)->get()->getResultArray();
+        $nowStr  = date('Y-m-d H:i:s');
 
         $statIdePending    = count(array_filter($allData, fn($i) => $i['status'] === 'ide_diajukan'));
         $statDesignPending = count(array_filter($allData, fn($i) => $i['status'] === 'review_design'));
         $statApproved      = count(array_filter($allData, fn($i) => in_array($i['status'], ['acc_ide', 'in_design', 'acc_final', 'published'], true)));
         $statRevisi        = count(array_filter($allData, fn($i) => $i['status'] === 'revisi'));
+        $statOverdue       = count(array_filter($allData, fn($i) => !empty($i['tanggal_publish']) && $i['tanggal_publish'] < $nowStr && !in_array($i['status'], ['published', 'ditolak'], true)));
 
         // Master data untuk form & modal (filter by bisnis + global fallback)
         $platforms    = $db->table('platforms')
@@ -92,29 +121,36 @@ class ApprovalManager extends BaseController
             ->groupEnd()
             ->get()->getResultArray();
 
-        $allUsers = $db->table('users u')
+        $designers    = $db->table('users u')
             ->select('u.id, u.nama, r.kode_role, r.nama_role')
             ->join('roles r', 'r.id = u.role_id')
+            ->whereIn('r.kode_role', ['content_creator', 'manager', 'superadmin', 'owner'])
             ->where('u.status', 'aktif')
             ->get()->getResultArray();
 
-        $designers = array_values(array_filter($allUsers, fn($u) => in_array($u['kode_role'], ['content_creator', 'manager', 'superadmin', 'owner'], true)));
-        $uploaders = array_values(array_filter($allUsers, fn($u) => in_array($u['kode_role'], ['admin_medsos', 'manager', 'superadmin', 'owner'], true)));
+        $uploaders    = $db->table('users u')
+            ->select('u.id, u.nama, r.kode_role, r.nama_role')
+            ->join('roles r', 'r.id = u.role_id')
+            ->whereIn('r.kode_role', ['admin_medsos', 'manager', 'superadmin', 'owner'])
+            ->where('u.status', 'aktif')
+            ->get()->getResultArray();
 
         return view('approval_manager/index', [
-            'judul'             => 'Dashboard Approval Manager',
             'konten'            => $konten,
             'statIdePending'    => $statIdePending,
             'statDesignPending' => $statDesignPending,
             'statApproved'      => $statApproved,
             'statRevisi'        => $statRevisi,
+            'statOverdue'       => $statOverdue,
             'filterStatus'      => $filterStatus,
+            'sortBy'            => $sortBy,
             'platforms'         => $platforms,
             'jenisKonten'       => $jenisKonten,
             'contentTypes'      => $contentTypes,
             'designers'         => $designers,
             'uploaders'         => $uploaders,
             'kode_role'         => $role,
+            'judul'             => 'Approval Manager',
         ]);
     }
 
