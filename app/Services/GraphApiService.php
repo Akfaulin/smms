@@ -16,8 +16,8 @@ use Config\MetaApi;
  */
 class GraphApiService
 {
-    protected CURLRequest $client;    // graph.facebook.com
-    protected CURLRequest $igClient;  // graph.instagram.com
+    protected ?CURLRequest $client = null;    // graph.facebook.com
+    protected ?CURLRequest $igClient = null;  // graph.instagram.com
     protected MetaApi $config;
     protected ?MetaApiLogModel $logModel;
 
@@ -39,21 +39,23 @@ class GraphApiService
         $this->baseUrl     = 'https://graph.facebook.com/' . $this->apiVersion;
         $this->igBaseUrl   = 'https://graph.instagram.com/' . $this->apiVersion;
 
-        // Client untuk graph.facebook.com (token/auth endpoint)
-        $this->client = $client ?? \Config\Services::curlrequest([
-            'baseURI'     => $this->baseUrl . '/',
-            'timeout'     => 30,
-            'http_errors' => false,
-            'verify'      => false,
-        ]);
+        if (function_exists('curl_init') && function_exists('curl_exec')) {
+            // Client untuk graph.facebook.com (token/auth endpoint)
+            $this->client = $client ?? \Config\Services::curlrequest([
+                'baseURI'     => $this->baseUrl . '/',
+                'timeout'     => 30,
+                'http_errors' => false,
+                'verify'      => false,
+            ]);
 
-        // Client terpisah untuk graph.instagram.com (Instagram Login API publishing)
-        $this->igClient = \Config\Services::curlrequest([
-            'baseURI'     => $this->igBaseUrl . '/',
-            'timeout'     => 30,
-            'http_errors' => false,
-            'verify'      => false,
-        ]);
+            // Client terpisah untuk graph.instagram.com (Instagram Login API publishing)
+            $this->igClient = \Config\Services::curlrequest([
+                'baseURI'     => $this->igBaseUrl . '/',
+                'timeout'     => 30,
+                'http_errors' => false,
+                'verify'      => false,
+            ]);
+        }
 
         try {
             $this->logModel = new MetaApiLogModel();
@@ -821,6 +823,15 @@ class GraphApiService
         $cleanEndpoint = '/' . ltrim($endpoint, '/');
         $activeBaseUrl = $useIgApi ? $this->igBaseUrl : $this->baseUrl;
         $absoluteUrl   = $activeBaseUrl . $cleanEndpoint;
+
+        if (!function_exists('curl_init') || !function_exists('curl_exec')) {
+            return [
+                'status' => 'gagal',
+                'code'   => 500,
+                'pesan'  => 'Ekstensi PHP cURL (ext-curl) belum diaktifkan di server hosting. Mohon aktifkan ekstensi "curl" pada menu PHP Extensions / Select PHP Version di cPanel hosting.',
+                'data'   => [],
+            ];
+        }
 
         try {
             // Gunakan native PHP cURL untuk menghindari CI4 CURLRequest baseURI conflict

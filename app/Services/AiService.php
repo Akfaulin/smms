@@ -13,14 +13,43 @@ class AiService
 
     public function __construct()
     {
-        $this->client = \Config\Services::curlrequest([
-            'baseURI' => 'https://generativelanguage.googleapis.com',
-            'timeout' => 30,
-        ]);
+        if (function_exists('curl_init') && function_exists('curl_exec')) {
+            $this->client = \Config\Services::curlrequest([
+                'baseURI' => 'https://generativelanguage.googleapis.com',
+                'timeout' => 30,
+            ]);
+        }
 
         // Ambil API key dari env / getenv / $_ENV
         $this->apiKey = trim(env('GEMINI_API_KEY') ?: (getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? '')));
         $this->logModel = new AiGenerationLogModel();
+    }
+
+    /**
+     * Fallback HTTP POST via PHP Stream Context jika ekstensi cURL tidak tersedia di hosting
+     */
+    protected function postViaStream(string $fullUrl, array $payload): ?array
+    {
+        $context = stream_context_create([
+            'http' => [
+                'method'        => 'POST',
+                'header'        => "Content-Type: application/json\r\nAccept: application/json\r\n",
+                'content'       => json_encode($payload),
+                'timeout'       => 30,
+                'ignore_errors' => true,
+            ],
+            'ssl' => [
+                'verify_peer'      => false,
+                'verify_peer_name' => false,
+            ]
+        ]);
+
+        $res = @file_get_contents($fullUrl, false, $context);
+        if ($res === false) {
+            return null;
+        }
+
+        return json_decode($res, true);
     }
 
     /**
@@ -34,10 +63,10 @@ class AiService
 
         // Daftar model aktif dengan fallback otomatis
         $availableModels = [
-            'gemini-3.5-flash-lite',
-            'gemini-3.1-flash-lite',
-            'gemini-3.5-flash',
-            'gemini-3.7-flash',
+            'gemini-2.5-flash-lite',
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
         ];
 
         $payload = [
@@ -55,35 +84,59 @@ class AiService
         ];
 
         $lastErrorMsg = '';
+        $hasCurl = function_exists('curl_init') && function_exists('curl_exec') && $this->client !== null;
 
         foreach ($availableModels as $model) {
-            $url = '/v1beta/models/' . $model . ':generateContent?key=' . $this->apiKey;
+            $path = '/v1beta/models/' . $model . ':generateContent?key=' . $this->apiKey;
+            $fullUrl = 'https://generativelanguage.googleapis.com' . $path;
 
             try {
-                $response = $this->client->post($url, [
-                    'json'        => $payload,
-                    'headers'     => ['Content-Type' => 'application/json'],
-                    'http_errors' => false // agar bisa menangkap pesan error API
-                ]);
+                if ($hasCurl) {
+                    $response = $this->client->post($path, [
+                        'json'        => $payload,
+                        'headers'     => ['Content-Type' => 'application/json'],
+                        'http_errors' => false // agar bisa menangkap pesan error API
+                    ]);
 
-                $statusCode = $response->getStatusCode();
-                $body = json_decode($response->getBody(), true);
+                    $statusCode = $response->getStatusCode();
+                    $body = json_decode($response->getBody(), true);
 
-                if ($statusCode === 200 && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
-                    return $body['candidates'][0]['content']['parts'][0]['text'];
+                    if ($statusCode === 200 && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                        return $body['candidates'][0]['content']['parts'][0]['text'];
+                    }
+
+                    log_message('warning', "Gemini API Model {$model} returned status {$statusCode}: " . $response->getBody());
+
+                    if ($statusCode === 401 || $statusCode === 403) {
+                        return "API Key Gemini tidak valid (Error {$statusCode}). Pastikan menggunakan API Key resmi Google AI Studio (berawalan 'AIzaSy...').";
+                    }
+
+                    $lastErrorMsg = $body['error']['message'] ?? "Status {$statusCode}";
+                } else {
+                    // Fallback via PHP stream
+                    $body = $this->postViaStream($fullUrl, $payload);
+                    if ($body && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                        return $body['candidates'][0]['content']['parts'][0]['text'];
+                    }
+                    if ($body && isset($body['error']['message'])) {
+                        $lastErrorMsg = $body['error']['message'];
+                    }
                 }
-
-                log_message('warning', "Gemini API Model {$model} returned status {$statusCode}: " . $response->getBody());
-
-                if ($statusCode === 401 || $statusCode === 403) {
-                    return "API Key Gemini tidak valid (Error {$statusCode}). Pastikan menggunakan API Key resmi Google AI Studio (berawalan 'AIzaSy...').";
-                }
-
-                $lastErrorMsg = $body['error']['message'] ?? "Status {$statusCode}";
             } catch (\Throwable $e) {
-                log_message('error', "CURL Exception on model {$model}: " . $e->getMessage());
+                log_message('error', "Exception on Gemini model {$model}: " . $e->getMessage());
+                // Jika error curl_exec, coba stream fallback
+                if (!$hasCurl || str_contains($e->getMessage(), 'curl_exec')) {
+                    $body = $this->postViaStream($fullUrl, $payload);
+                    if ($body && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                        return $body['candidates'][0]['content']['parts'][0]['text'];
+                    }
+                }
                 $lastErrorMsg = $e->getMessage();
             }
+        }
+
+        if (!$hasCurl && empty($lastErrorMsg)) {
+            return "Ekstensi PHP cURL (ext-curl) belum aktif di hosting. Mohon aktifkan ekstensi 'curl' pada menu 'Select PHP Version' -> 'Extensions' di cPanel hosting.";
         }
 
         return "Gagal memanggil API AI: " . ($lastErrorMsg ?: 'Server AI sedang sibuk.');
