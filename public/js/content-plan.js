@@ -539,13 +539,67 @@ async function bukaDetail(id) {
     const namaJenis = (k.nama_jenis || '').toLowerCase();
     const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
 
-    // Auto Publish Box handling
+    // Auto Publish Box handling (Instant Manual Publish)
     const autoPublishBox = document.getElementById('autoPublishBox');
     if (autoPublishBox) {
-        if (isFoto && k.image_url && status !== 'published') {
+        if (k.image_url && status !== 'published') {
             autoPublishBox.style.display = 'block';
         } else {
             autoPublishBox.style.display = 'none';
+        }
+    }
+
+    // Schedule Publish Box handling (Background Scheduled Publishing)
+    const scheduleBox = document.getElementById('schedulePublishBox');
+    const inScheduledAt = document.getElementById('inScheduledAt');
+    const btnBatalJadwal = document.getElementById('btnBatalJadwal');
+    const scheduleBadge = document.getElementById('scheduleStatusBadge');
+    const scheduleErr = document.getElementById('scheduleErrorNote');
+
+    if (scheduleBox) {
+        if (status === 'acc_final' || k.auto_publish_status) {
+            scheduleBox.style.display = 'block';
+
+            if (inScheduledAt) {
+                if (k.scheduled_at) {
+                    inScheduledAt.value = k.scheduled_at.replace(' ', 'T').substring(0, 16);
+                } else if (k.tanggal_publish) {
+                    const dtStr = k.tanggal_publish.replace(' ', 'T').substring(0, 16);
+                    inScheduledAt.value = dtStr.includes('T') ? dtStr : dtStr + 'T10:00';
+                } else {
+                    inScheduledAt.value = '';
+                }
+            }
+
+            if (btnBatalJadwal) {
+                btnBatalJadwal.style.display = (k.auto_publish_status === 'menunggu') ? 'inline-flex' : 'none';
+            }
+
+            if (scheduleBadge) {
+                if (k.auto_publish_status === 'menunggu') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:3px 10px; border-radius:12px;">⏳ Menunggu Jadwal Auto-Publish</span>`;
+                } else if (k.auto_publish_status === 'diproses') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b45309; background:#fef3c7; padding:3px 10px; border-radius:12px;">⚡ Sedang Diproses Worker</span>`;
+                } else if (k.auto_publish_status === 'berhasil') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#15803d; background:#dcfce7; padding:3px 10px; border-radius:12px;">✔ Terjadwal Sukses (Published)</span>`;
+                } else if (k.auto_publish_status === 'gagal') {
+                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:3px 10px; border-radius:12px;">❌ Gagal (${k.publish_attempts || 0}/3)</span>`;
+                } else {
+                    scheduleBadge.innerHTML = '';
+                }
+            }
+
+            if (scheduleErr) {
+                if (k.last_error && k.auto_publish_status === 'gagal') {
+                    scheduleErr.style.display = 'block';
+                    scheduleErr.innerHTML = `<strong>Penyebab Kegagalan:</strong> ${escHtml(k.last_error)}`;
+                } else {
+                    scheduleErr.style.display = 'none';
+                    scheduleErr.textContent = '';
+                }
+            }
+        } else {
+            scheduleBox.style.display = 'none';
         }
     }
 
@@ -787,7 +841,71 @@ async function eksekusiPublishOtomatis() {
         toast(res ? res.pesan : 'Publish otomatis gagal.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `🚀 Publish ke Instagram Sekarang (Otomatis)`;
+            btn.innerHTML = `🚀 Publish ke Instagram Sekarang (Instan)`;
+        }
+    }
+}
+
+// ─── Auto-Publish Scheduling (Background Publishing) ──────
+
+async function simpanJadwalAutoPublish() {
+    if (!activeContent) return;
+    const inScheduledAt = document.getElementById('inScheduledAt');
+    const scheduledVal = (inScheduledAt?.value || '').trim();
+
+    if (!scheduledVal) {
+        toast('Silakan pilih tanggal dan jam jadwal publish terlebih dahulu.', 'error');
+        if (inScheduledAt) inScheduledAt.focus();
+        return;
+    }
+
+    const btn = document.getElementById('btnSimpanJadwal');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
+    }
+
+    const fd = new FormData();
+    fd.append('scheduled_at', scheduledVal);
+
+    const res = await api(`/dashboard/jadwal-upload/jadwalkan/${activeContent}`, 'POST', fd);
+
+    if (res && res.status === 'sukses') {
+        toast(res.pesan || 'Jadwal auto-publish berhasil disimpan!', 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        toast(res ? res.pesan : 'Gagal menyimpan jadwal.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `📅 Simpan Jadwal`;
+        }
+    }
+}
+
+async function batalkanJadwalAutoPublish() {
+    if (!activeContent) return;
+    if (!confirm('Apakah Anda yakin ingin membatalkan jadwal auto-publish untuk postingan ini?')) {
+        return;
+    }
+
+    const btn = document.getElementById('btnBatalJadwal');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Membatalkan...`;
+    }
+
+    const res = await api(`/dashboard/jadwal-upload/batal-jadwal/${activeContent}`, 'POST');
+
+    if (res && res.status === 'sukses') {
+        toast(res.pesan || 'Jadwal auto-publish berhasil dibatalkan.', 'success');
+        tutupModal('backDet');
+        setTimeout(() => location.reload(), 800);
+    } else {
+        toast(res ? res.pesan : 'Gagal membatalkan jadwal.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `✕ Batalkan Jadwal`;
         }
     }
 }
@@ -1002,10 +1120,7 @@ async function simpanImageUrl() {
         // Refresh tombol auto-publish visibility
         const autoPublishBox = document.getElementById('autoPublishBox');
         if (autoPublishBox) {
-            const cachedItem = (window.ALL_KONTEN || []).find(x => x.id == activeContent);
-            const namaJenis = (cachedItem?.nama_jenis || '').toLowerCase();
-            const isFoto = namaJenis === 'static post' || namaJenis === 'foto';
-            autoPublishBox.style.display = (isFoto && savedUrl) ? 'block' : 'none';
+            autoPublishBox.style.display = savedUrl ? 'block' : 'none';
         }
 
         // Update Buka Gambar / Preview Button state
@@ -1109,6 +1224,25 @@ document.addEventListener('DOMContentLoaded', () => {
     buildCalendar();
     buildList();
     updateLegendCount();
+
+    // Auto background trigger for scheduled posts (Localhost / Browser fallback)
+    if (window.IS_ADMIN_MEDSOS_VIEW || location.pathname.includes('jadwal-upload')) {
+        const pingScheduledPosts = async () => {
+            try {
+                const res = await api('/dashboard/jadwal-upload/check-scheduled', 'POST');
+                if (res && res.status === 'sukses' && res.data && (res.data.sukses > 0 || res.data.gagal > 0)) {
+                    toast(`Auto-publish scheduler: ${res.data.sukses} postingan berhasil dipublish otomatis!`, res.data.sukses > 0 ? 'success' : 'warning');
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } catch (e) {
+                // Silent catch
+            }
+        };
+
+        // Run on load and every 30 seconds
+        setTimeout(pingScheduledPosts, 1000);
+        setInterval(pingScheduledPosts, 30000);
+    }
 });
 
 // ─── AI Idea Generator (Uses global renderMarkdown from app.js) ───────────

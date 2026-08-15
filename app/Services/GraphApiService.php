@@ -271,19 +271,71 @@ class GraphApiService
     }
 
     /**
-     * b) Publish gambar ke Instagram (Single Image Post)
+     * Deteksi tipe media apakah Video / Reels atau Image / Gambar.
      *
-     * @param string $imageUrl URL publik gambar (mendukung Google Drive share link)
+     * @param string $url URL media
+     * @param string|null $jenisHint Petunjuk jenis konten (misal: 'reels', 'video', 'foto', 'static post')
+     * @return string 'VIDEO' atau 'IMAGE'
+     */
+    public function detectMediaType(string $url, ?string $jenisHint = null): string
+    {
+        $jenisLower = strtolower($jenisHint ?? '');
+        if (strpos($jenisLower, 'reels') !== false || strpos($jenisLower, 'video') !== false) {
+            return 'VIDEO';
+        }
+
+        // Cek ekstensi file umum dari URL
+        if (preg_match('/\.(mp4|mov|avi|webm|mkv|m4v)(\?.*)?$/i', $url)) {
+            return 'VIDEO';
+        }
+        if (preg_match('/\.(jpe?g|png|webp|gif|bmp)(\?.*)?$/i', $url)) {
+            return 'IMAGE';
+        }
+
+        // Lakukan fast HEAD/GET check (0 byte) untuk memeriksa Content-Type asli dari URL/Drive
+        try {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_NOBODY, true);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_exec($ch);
+            $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+            curl_close($ch);
+
+            if ($contentType) {
+                $ctLower = strtolower($contentType);
+                if (str_starts_with($ctLower, 'video/')) {
+                    return 'VIDEO';
+                }
+                if (str_starts_with($ctLower, 'image/')) {
+                    return 'IMAGE';
+                }
+            }
+        } catch (\Throwable $e) {
+            // fallback
+        }
+
+        return (strpos($jenisLower, 'reels') !== false || strpos($jenisLower, 'video') !== false) ? 'VIDEO' : 'IMAGE';
+    }
+
+    /**
+     * b) Publish media (Gambar atau Video / Reels) ke Instagram
+     *
+     * @param string $mediaUrl URL publik gambar atau video (mendukung Google Drive share link)
      * @param string $caption Caption postingan
+     * @param string|null $mediaTypeHint Petunjuk tipe konten / jenis konten ('reels', 'video', 'foto', dsb)
      * @return array Standard response format ['status' => 'sukses'|'gagal', 'pesan' => string, 'data' => array]
      */
-    public function publishToInstagram(string $imageUrl, string $caption = ''): array
+    public function publishToInstagram(string $mediaUrl, string $caption = '', ?string $mediaTypeHint = null): array
     {
         // 0. Konversi Google Drive share link ke direct-access URL
-        $imageUrl = $this->convertDriveLink($imageUrl);
+        $mediaUrl = $this->convertDriveLink($mediaUrl);
 
-        // 1. Validasi Image URL
-        $urlValidation = $this->validatePublicUrl($imageUrl);
+        // 1. Validasi Media URL
+        $urlValidation = $this->validatePublicUrl($mediaUrl);
         if ($urlValidation['status'] === 'gagal') {
             return $urlValidation;
         }
@@ -291,24 +343,21 @@ class GraphApiService
         // 2. Validasi Caption (Max 2200 Karakter)
         $warning = null;
         if (empty(trim($caption))) {
-            $warning = 'Caption kosong. Gambar akan dipublish tanpa caption.';
+            $warning = 'Caption kosong. Media akan dipublish tanpa caption.';
         } elseif (mb_strlen($caption) > 2200) {
             $caption = mb_substr($caption, 0, 2200);
             $warning = 'Caption melebihi 2200 karakter dan telah dipotong secara otomatis.';
         }
 
-
-
         // 3. Dapatkan Instagram Business Account ID
         $igAccountId = $this->getInstagramBusinessAccountId();
 
         if (empty($igAccountId)) {
-            // Jika dalam lingkungan test/demo tanpa token live, kembalikan response informatif
             return [
                 'status' => 'gagal',
                 'pesan'  => 'Gagal mendapatkan Instagram Business Account ID untuk username "' . $this->igUsername . '". Pastikan User Access Token dengan permission instagram_content_publish sudah dikonfigurasi di .env.',
                 'data'   => [
-                    'image_url'  => $imageUrl,
+                    'media_url'  => $mediaUrl,
                     'ig_account' => $this->igUsername,
                 ],
             ];
@@ -316,14 +365,27 @@ class GraphApiService
 
         $token = $this->getAccessToken();
 
-        // 4. Step 1: Create Media Container via Instagram Login API
+        // 4. Deteksi tipe media (IMAGE vs VIDEO/REELS)
+        $detectedType = $this->detectMediaType($mediaUrl, $mediaTypeHint);
+
+        // 5. Step 1: Create Media Container via Instagram Login API
         // POST https://graph.instagram.com/{version}/{ig-user-id}/media
         $containerUrl = '/' . $igAccountId . '/media';
-        $containerPayload = [
-            'image_url'    => $imageUrl,
-            'caption'      => $caption,
-            'access_token' => $token,
-        ];
+
+        if ($detectedType === 'VIDEO') {
+            $containerPayload = [
+                'media_type'   => 'REELS',
+                'video_url'    => $mediaUrl,
+                'caption'      => $caption,
+                'access_token' => $token,
+            ];
+        } else {
+            $containerPayload = [
+                'image_url'    => $mediaUrl,
+                'caption'      => $caption,
+                'access_token' => $token,
+            ];
+        }
 
         $containerRes = $this->requestApiWithRetry('POST', $containerUrl, $containerPayload, 3, true);
 
@@ -338,11 +400,20 @@ class GraphApiService
 
         $creationId = $containerRes['data']['id'];
 
-        // 5. Step 2: Tunggu container media selesai diproses Meta (async processing)
-        // Meta memerlukan beberapa detik untuk fetch & process gambar sebelum container bisa dipublish
-        $this->waitForContainerReady($igAccountId, $creationId, $token);
+        // 6. Step 2: Tunggu container media selesai diproses Meta (async processing)
+        // Meta memerlukan beberapa detik untuk fetch & process gambar / video (Reels bisa 15-60s)
+        $maxWaitTime = ($detectedType === 'VIDEO') ? 90 : 35;
+        $readyStatus = $this->waitForContainerReady($igAccountId, $creationId, $token, $maxWaitTime);
 
-        // 6. Step 3: Publish Container via Instagram Login API
+        if (! $readyStatus['ready']) {
+            return [
+                'status' => 'gagal',
+                'pesan'  => 'Meta Container Processing Error: ' . ($readyStatus['error'] ?? 'Proses encoding media di server Meta gagal atau timeout.'),
+                'data'   => ['creation_id' => $creationId, 'status' => $readyStatus['status'] ?? 'ERROR'],
+            ];
+        }
+
+        // 7. Step 3: Publish Container via Instagram Login API
         // POST https://graph.instagram.com/{version}/{ig-user-id}/media_publish
         $publishUrl = '/' . $igAccountId . '/media_publish';
         $publishPayload = [
@@ -352,10 +423,10 @@ class GraphApiService
 
         $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
 
-        // Handle specific error code 9007: Image processing still pending
+        // Handle specific error code 9007: Image/Video processing still pending
         if ($publishRes['status'] === 'gagal' && isset($publishRes['data']['error']['code']) && $publishRes['data']['error']['code'] == 9007) {
-            log_message('warning', "Meta Graph API 9007 encountered. Retrying publish...");
-            sleep(5);
+            log_message('warning', "Meta Graph API 9007 encountered. Retrying publish in 8 seconds...");
+            sleep(8);
             $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
         }
 
@@ -369,15 +440,17 @@ class GraphApiService
         }
 
         $mediaId = $publishRes['data']['id'];
+        $mediaLabel = ($detectedType === 'VIDEO') ? 'Video / Reels' : 'Gambar';
 
         return [
             'status' => 'sukses',
-            'pesan'  => 'Konten gambar berhasil dipublish ke Instagram!',
+            'pesan'  => "Konten {$mediaLabel} berhasil dipublish ke Instagram!",
             'data'   => [
                 'media_id'     => $mediaId,
                 'creation_id'  => $creationId,
                 'ig_account_id'=> $igAccountId,
-                'image_url'    => $imageUrl,
+                'media_type'   => $detectedType,
+                'media_url'    => $mediaUrl,
                 'caption'      => $caption,
                 'warning'      => $warning,
             ],
@@ -392,7 +465,7 @@ class GraphApiService
         if (empty(trim($url))) {
             return [
                 'status' => 'gagal',
-                'pesan'  => 'URL gambar (image_url) wajib diisi dan tidak boleh kosong.',
+                'pesan'  => 'URL media (image_url) wajib diisi dan tidak boleh kosong.',
                 'data'   => [],
             ];
         }
@@ -400,7 +473,7 @@ class GraphApiService
         if (! filter_var($url, FILTER_VALIDATE_URL)) {
             return [
                 'status' => 'gagal',
-                'pesan'  => 'Format URL gambar tidak valid: ' . htmlspecialchars($url),
+                'pesan'  => 'Format URL media tidak valid: ' . htmlspecialchars($url),
                 'data'   => [],
             ];
         }
@@ -412,7 +485,7 @@ class GraphApiService
         if (empty($host) || $host === 'localhost' || $host === '127.0.0.1' || $host === '::1' || substr($host, -6) === '.local') {
             return [
                 'status' => 'gagal',
-                'pesan'  => "URL image_url harus berupa URL publik yang dapat diakses Meta Graph API. Host localhost/IP lokal '{$host}' tidak didukung oleh Meta.",
+                'pesan'  => "URL media harus berupa URL publik yang dapat diakses Meta Graph API. Host localhost/IP lokal '{$host}' tidak didukung oleh Meta.",
                 'data'   => ['host' => $host, 'url' => $url],
             ];
         }
@@ -422,7 +495,7 @@ class GraphApiService
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false && $ip !== $host) {
             return [
                 'status' => 'gagal',
-                'pesan'  => "URL image_url menunjuk ke IP private/lokal ({$ip}). Meta API memerlukan URL publik yang bisa diakses internet.",
+                'pesan'  => "URL media menunjuk ke IP private/lokal ({$ip}). Meta API memerlukan URL publik yang bisa diakses internet.",
                 'data'   => ['ip' => $ip, 'host' => $host, 'url' => $url],
             ];
         }
@@ -436,13 +509,15 @@ class GraphApiService
 
     /**
      * Tunggu container media selesai diproses Meta sebelum publish.
-     * Meta membutuhkan beberapa detik untuk fetch & process gambar (async).
+     * Meta membutuhkan beberapa detik untuk fetch & process gambar / video (async).
      * Poll GET /{container-id}?fields=status_code sampai FINISHED atau timeout.
+     *
+     * @return array{ready: bool, status: string, error?: string}
      */
-    protected function waitForContainerReady(string $igAccountId, string $containerId, string $token, int $maxWait = 30): void
+    protected function waitForContainerReady(string $igAccountId, string $containerId, string $token, int $maxWait = 60): array
     {
         $waited  = 0;
-        $poll    = 3; // interval detik
+        $poll    = 4; // interval detik
 
         while ($waited < $maxWait) {
             sleep($poll);
@@ -457,18 +532,25 @@ class GraphApiService
 
             if ($statusCode === 'FINISHED') {
                 log_message('info', "Meta container {$containerId} FINISHED after {$waited}s");
-                return;
+                return ['ready' => true, 'status' => 'FINISHED'];
             }
 
             if ($statusCode === 'ERROR') {
-                log_message('error', "Meta container {$containerId} ERROR: " . ($statusRes['data']['status'] ?? 'unknown'));
-                return;
+                $err = $statusRes['data']['status'] ?? 'Terjadi kesalahan saat memproses media di server Instagram.';
+                log_message('error', "Meta container {$containerId} ERROR: {$err}");
+                return ['ready' => false, 'status' => 'ERROR', 'error' => $err];
+            }
+
+            if ($statusCode === 'EXPIRED') {
+                log_message('error', "Meta container {$containerId} EXPIRED.");
+                return ['ready' => false, 'status' => 'EXPIRED', 'error' => 'Container media telah kedaluwarsa sebelum dipublish.'];
             }
 
             log_message('info', "Meta container {$containerId} status: {$statusCode}. Waiting {$poll}s more ({$waited}/{$maxWait})...");
         }
 
         log_message('warning', "Meta container {$containerId}: max wait {$maxWait}s reached. Attempting publish anyway.");
+        return ['ready' => true, 'status' => 'TIMEOUT_ATTEMPT'];
     }
 
     /**

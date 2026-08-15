@@ -146,6 +146,28 @@ $roleNow = $kode_role ?? session('kode_role');
                         <span class="cp-badge <?= $sCls ?>" style="padding:4px 12px; font-size:12px; display:inline-block; font-weight:600; border-radius:20px; white-space:nowrap;">
                             <?= esc(\App\Services\TransisiKonten::labelStatus($k['status'])) ?>
                         </span>
+
+                        <?php if (!empty($k['auto_publish_status'])): ?>
+                            <div style="margin-top:4px;">
+                            <?php if ($k['auto_publish_status'] === 'menunggu'): ?>
+                                <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:2px 8px; border-radius:10px;" title="Jadwal: <?= esc($k['scheduled_at']) ?>">
+                                    ⏳ Terjadwal: <?= date('d/m H:i', strtotime($k['scheduled_at'])) ?>
+                                </span>
+                            <?php elseif ($k['auto_publish_status'] === 'diproses'): ?>
+                                <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:10px;">
+                                    ⚡ Diproses
+                                </span>
+                            <?php elseif ($k['auto_publish_status'] === 'berhasil'): ?>
+                                <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#15803d; background:#dcfce7; padding:2px 8px; border-radius:10px;">
+                                    ✔ Auto-Published
+                                </span>
+                            <?php elseif ($k['auto_publish_status'] === 'gagal'): ?>
+                                <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:2px 8px; border-radius:10px;" title="<?= esc($k['last_error'] ?? '') ?>">
+                                    ❌ Gagal (<?= (int)($k['publish_attempts'] ?? 0) ?>/3)
+                                </span>
+                            <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
                     </td>
                     <td style="font-size:13px; color:#475569; font-weight:500;">
                         <?= esc($k['platform_str'] ?: '—') ?>
@@ -275,16 +297,39 @@ $roleNow = $kode_role ?? session('kode_role');
                 <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
             </div>
 
+            <!-- ─── JADWAL AUTO-PUBLISH BOX (BACKGROUND PUBLISHING) ─────────── -->
+            <div id="schedulePublishBox" style="margin-top:16px; border:1px solid #c7d2fe; border-radius:12px; padding:16px; background:#f5f3ff;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                    <div style="font-weight:600; color:#4338ca; display:flex; align-items:center; gap:6px; font-size:13.5px;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Auto-Publish Terjadwal (Background Job)
+                    </div>
+                    <div id="scheduleStatusBadge"></div>
+                </div>
+                <p style="font-size:12px; color:#4338ca; margin-bottom:12px; line-height:1.4;">
+                    Tentukan tanggal & jam tayang otomatis. Sistem background scheduler akan mempublish postingan ke Instagram secara otomatis saat waktu tiba.
+                </p>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <input type="datetime-local" id="inScheduledAt" class="cp-inp" style="flex:1; min-width:200px; padding:8px 12px; border-radius:8px; font-size:13px; background:#fff;">
+                    <button type="button" class="cpb" id="btnSimpanJadwal" onclick="simpanJadwalAutoPublish()" style="background:#4f46e5; color:#fff; font-weight:600; padding:8px 16px; border-radius:8px; font-size:12.5px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                        📅 Simpan Jadwal
+                    </button>
+                    <button type="button" class="cpb" id="btnBatalJadwal" onclick="batalkanJadwalAutoPublish()" style="display:none; background:#fee2e2; color:#b91c1c; font-weight:600; padding:8px 14px; border-radius:8px; font-size:12.5px; border:1px solid #fca5a5; cursor:pointer;">
+                        ✕ Batalkan Jadwal
+                    </button>
+                </div>
+                <div id="scheduleErrorNote" style="display:none; margin-top:10px; font-size:12px; color:#b91c1c; background:#fef2f2; padding:8px 12px; border-radius:8px; border:1px solid #fecaca; line-height:1.4;"></div>
+            </div>
 
             <!-- Publish Otomatis Box (Instagram API) -->
             <div id="autoPublishBox" style="display:none; margin-top:16px; border:1px solid #bbf7d0; border-radius:12px; padding:16px; background:#f0fdf4;">
                 <div style="font-weight:600; color:#16a34a; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    Publish Otomatis via API
+                    Publish Instan via API (Manual)
                 </div>
-                <p style="font-size:12.5px; color:#166534; margin-bottom:12px; line-height:1.4;">Konten ini bertipe Foto/Static Post dan memiliki gambar publik. Anda dapat mempublikasikannya langsung ke Instagram secara otomatis.</p>
+                <p style="font-size:12.5px; color:#166534; margin-bottom:12px; line-height:1.4;">Konten ini memiliki media publik (Foto atau Video Reels). Anda dapat mempublikasikannya langsung ke Instagram sekarang juga.</p>
                 <button type="button" class="cpb" id="btnAutoPublish" onclick="eksekusiPublishOtomatis()" style="width:100%; background:#16a34a; color:#fff; font-weight:600; padding:10px; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
-                    🚀 Publish ke Instagram Sekarang (Otomatis)
+                    🚀 Publish ke Instagram Sekarang (Instan)
                 </button>
             </div>
 

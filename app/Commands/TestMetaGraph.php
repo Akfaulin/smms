@@ -88,19 +88,21 @@ class TestMetaGraph extends BaseCommand
         }
 
         // ---------------------------------------------------------------------
-        // TEST 3d: publishToInstagram with Public Image URL
+        // TEST 3e: detectMediaType (Image vs Video/Reels Detection)
         // ---------------------------------------------------------------------
-        CLI::write("[TEST 3d] Testing publishToInstagram() with Valid Public Image URL...", 'white');
-        $resPublic = $service->publishToInstagram('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80&fm=jpg&fit=crop', 'Automated Post via Meta Graph API #SMMTesting');
-        CLI::write(" -> Status: " . $resPublic['status'], 'yellow');
-        CLI::write(" -> Pesan: " . $resPublic['pesan'], 'yellow');
-        if (isset($resPublic['data']) && ! empty($resPublic['data'])) {
-            CLI::write(" -> Data: " . json_encode($resPublic['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), 'cyan');
-        }
-        if ($resPublic['status'] === 'sukses') {
-            CLI::write(" -> [PASSED] Live publishing succeeded!\n", 'green');
+        CLI::write("[TEST 3e] Testing detectMediaType()...", 'white');
+        $imgType = $service->detectMediaType('https://images.unsplash.com/photo.jpg', 'Static Post');
+        $vidType = $service->detectMediaType('https://drive.google.com/uc?export=view&id=1AKScIXOCNqAMtC1TYv9abvILKeauv0NX', 'Reels / Video');
+        $vidExt  = $service->detectMediaType('https://example.com/sample.mp4');
+
+        CLI::write(" -> Image URL detected as: {$imgType}", ($imgType === 'IMAGE') ? 'green' : 'red');
+        CLI::write(" -> Drive MP4 detected as: {$vidType}", ($vidType === 'VIDEO') ? 'green' : 'red');
+        CLI::write(" -> MP4 extension detected as: {$vidExt}", ($vidExt === 'VIDEO') ? 'green' : 'red');
+
+        if ($imgType === 'IMAGE' && $vidType === 'VIDEO' && $vidExt === 'VIDEO') {
+            CLI::write(" -> [PASSED] Media types correctly detected!\n", 'green');
         } else {
-            CLI::write(" -> [INFO] Meta Graph API returned error as expected without live User Access Token: " . $resPublic['pesan'] . "\n", 'yellow');
+            CLI::write(" -> [FAILED] Media detection error.\n", 'red');
         }
 
         CLI::write("====================================================================", 'yellow');
