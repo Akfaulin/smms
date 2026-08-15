@@ -37,11 +37,6 @@ class IdeKonten extends BaseController
 
         $query = $this->model->withRelasi()->byBisnis($bisnisId);
 
-        // Jika Creative Team / Content Creator: tampilkan ide buatan sendiri (kecuali jika minta 'all')
-        if (in_array($role, ['creative_team', 'content_creator'], true)) {
-            $query->where('content_plan.dibuat_oleh', $userId);
-        }
-
         // Apply status filter tab
         if ($filterStatus === 'pending') {
             $query->where('content_plan.status', 'ide_diajukan');
@@ -51,9 +46,36 @@ class IdeKonten extends BaseController
             $query->where('content_plan.status', 'revisi');
         } elseif ($filterStatus === 'rejected') {
             $query->where('content_plan.status', 'ditolak');
+        } elseif ($filterStatus === 'overdue') {
+            $nowStr = date('Y-m-d H:i:s');
+            $query->where('content_plan.tanggal_publish IS NOT NULL')
+                  ->where('content_plan.tanggal_publish <', $nowStr)
+                  ->whereNotIn('content_plan.status', ['published', 'ditolak']);
         }
 
-        $konten = $query->orderBy('content_plan.created_at', 'DESC')->findAll();
+        // Poin 3: Sortir default tanggal publish paling mepet
+        $sortBy = $this->request->getGet('sort') ?: 'publish_mepet';
+        switch ($sortBy) {
+            case 'publish_jauh':
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'DESC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terbaru':
+                $query->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terlama':
+                $query->orderBy('content_plan.created_at', 'ASC');
+                break;
+            case 'publish_mepet':
+            default:
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'ASC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+        }
+
+        $konten = $query->findAll();
 
         // Join platforms
         foreach ($konten as &$k) {
@@ -68,17 +90,14 @@ class IdeKonten extends BaseController
         unset($k);
 
         // Calculate summary metrics (filter by bisnis)
-        $baseCountQuery = $db->table('content_plan')->where('bisnis_id', $bisnisId);
-        if (in_array($role, ['creative_team', 'content_creator'], true)) {
-            $baseCountQuery->where('dibuat_oleh', $userId);
-        }
-
-        $allIdeData = $baseCountQuery->get()->getResultArray();
+        $allIdeData = $this->model->byBisnis($bisnisId)->findAll();
+        $nowStr     = date('Y-m-d H:i:s');
 
         $statTotal    = count($allIdeData);
         $statPending  = count(array_filter($allIdeData, fn($i) => $i['status'] === 'ide_diajukan'));
         $statApproved = count(array_filter($allIdeData, fn($i) => in_array($i['status'], ['acc_ide', 'in_design', 'review_design', 'acc_final', 'published'], true)));
         $statRevisi   = count(array_filter($allIdeData, fn($i) => $i['status'] === 'revisi'));
+        $statOverdue  = count(array_filter($allIdeData, fn($i) => !empty($i['tanggal_publish']) && $i['tanggal_publish'] < $nowStr && !in_array($i['status'], ['published', 'ditolak'], true)));
 
         // Master data untuk form modal (filter by bisnis + global fallback)
         $platforms    = $db->table('platforms')
@@ -104,17 +123,19 @@ class IdeKonten extends BaseController
             ->get()->getResultArray();
 
         return view('ide_konten/index', [
-            'judul'        => 'Dashboard Ide Konten',
-            'konten'       => $konten,
-            'statTotal'    => $statTotal,
-            'statPending'  => $statPending,
-            'statApproved' => $statApproved,
-            'statRevisi'   => $statRevisi,
-            'filterStatus' => $filterStatus,
-            'platforms'    => $platforms,
-            'jenisKonten'  => $jenisKonten,
-            'contentTypes' => $contentTypes,
-            'kode_role'    => $role,
+            'konten'        => $konten,
+            'statTotal'     => $statTotal,
+            'statPending'   => $statPending,
+            'statApproved'  => $statApproved,
+            'statRevisi'    => $statRevisi,
+            'statOverdue'   => $statOverdue,
+            'filterStatus'  => $filterStatus,
+            'sortBy'        => $sortBy,
+            'platforms'     => $platforms,
+            'jenisKonten'   => $jenisKonten,
+            'contentTypes'  => $contentTypes,
+            'kode_role'     => $role,
+            'judul'         => 'Dashboard Ide Konten',
         ]);
     }
 

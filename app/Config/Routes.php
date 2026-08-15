@@ -44,9 +44,13 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->post('ide-konten/store', 'IdeKonten::store');
     $routes->get('trend-ai', 'TrendAi::index');
     $routes->post('trend-ai/generate-hook', 'TrendAi::generateHook');
+    $routes->post('trend-ai/scan-trends', 'TrendAi::scanTrends');
+    $routes->post('trend-ai/store-trend', 'TrendAi::storeTrend');
+    $routes->post('trend-ai/delete-trend/(:num)', 'TrendAi::deleteTrend/$1');
     $routes->get('tugas-creator', 'TugasCreator::index');
     $routes->get('asset-library', 'AssetLibrary::index');
     $routes->post('asset-library/store', 'AssetLibrary::store');
+    $routes->post('asset-library/upload-guideline', 'AssetLibrary::uploadGuideline');
     $routes->post('asset-library/delete/(:num)', 'AssetLibrary::delete/$1');
     $routes->get('approval-manager', 'ApprovalManager::index');
     $routes->post('approval-manager/ai-review/(:num)', 'ApprovalManager::aiReview/$1');
@@ -55,7 +59,8 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->post('jadwal-upload/publish/(:num)', 'JadwalUpload::publish/$1');
     $routes->post('jadwal-upload/publish-otomatis/(:num)', 'JadwalUpload::publishOtomatis/$1');
     $routes->get('kalender-tayang', 'KalenderTayang::index');
-
+    $routes->get('audit-trail', 'AuditTrail::index');
+    $routes->get('audit-trail/detail/(:num)', 'AuditTrail::detail/$1');
 
     $routes->get('content-plan', 'ContentPlan::index');
     $routes->post('content-plan/store', 'ContentPlan::store');
@@ -73,6 +78,7 @@ $routes->group('dashboard', function (RouteCollection $routes) {
     $routes->post('content-plan/design-url/(:num)', 'ContentPlan::updateDesignUrl/$1');
     $routes->post('content-plan/image-url/(:num)', 'ContentPlan::updateImageUrl/$1');
     $routes->post('content-plan/upload-image/(:num)', 'ContentPlan::uploadImage/$1');
+    $routes->post('content-plan/update-details/(:num)', 'ContentPlan::updateDetails/$1');
 
     // Riwayat status & catatan (untuk timeline modal — Tahap 3)
     $routes->get('content-plan/(:num)/log', 'ContentPlan::log/$1');

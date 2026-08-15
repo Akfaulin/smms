@@ -32,6 +32,7 @@ class JadwalUpload extends BaseController
         }
 
         $filterStatus = $this->request->getGet('status') ?? 'all';
+        $sortBy       = $this->request->getGet('sort') ?: 'publish_mepet';
         $todayStr     = date('Y-m-d');
         $bisnisId     = (int) session('bisnis_aktif_id');
 
@@ -44,6 +45,11 @@ class JadwalUpload extends BaseController
             $query->where('content_plan.tanggal_publish', $todayStr);
         } elseif ($filterStatus === 'published') {
             $query->where('content_plan.status', 'published');
+        } elseif ($filterStatus === 'overdue') {
+            $nowStr = date('Y-m-d H:i:s');
+            $query->where('content_plan.tanggal_publish IS NOT NULL')
+                  ->where('content_plan.tanggal_publish <', $nowStr)
+                  ->whereNotIn('content_plan.status', ['published', 'ditolak']);
         } else {
             // Default filter list untuk Admin Medsos: fokus ke acc_final & published
             if ($role === 'admin_medsos') {
@@ -51,7 +57,28 @@ class JadwalUpload extends BaseController
             }
         }
 
-        $konten = $query->orderBy('content_plan.tanggal_publish', 'ASC')->findAll();
+        // Poin 3: Sortir default tanggal publish paling mepet
+        switch ($sortBy) {
+            case 'publish_jauh':
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'DESC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terbaru':
+                $query->orderBy('content_plan.created_at', 'DESC');
+                break;
+            case 'diajukan_terlama':
+                $query->orderBy('content_plan.created_at', 'ASC');
+                break;
+            case 'publish_mepet':
+            default:
+                $query->orderBy('CASE WHEN content_plan.tanggal_publish IS NULL THEN 1 ELSE 0 END', 'ASC', false)
+                      ->orderBy('content_plan.tanggal_publish', 'ASC')
+                      ->orderBy('content_plan.created_at', 'DESC');
+                break;
+        }
+
+        $konten = $query->findAll();
 
         // Join platforms
         foreach ($konten as &$k) {
@@ -67,10 +94,12 @@ class JadwalUpload extends BaseController
 
         // Calculate summary metrics (filter by bisnis)
         $allData = $db->table('content_plan')->where('bisnis_id', $bisnisId)->get()->getResultArray();
+        $nowStr  = date('Y-m-d H:i:s');
 
         $statReady     = count(array_filter($allData, fn($i) => $i['status'] === 'acc_final'));
         $statToday     = count(array_filter($allData, fn($i) => !empty($i['tanggal_publish']) && date('Y-m-d', strtotime($i['tanggal_publish'])) === $todayStr));
         $statPublished = count(array_filter($allData, fn($i) => $i['status'] === 'published'));
+        $statOverdue   = count(array_filter($allData, fn($i) => !empty($i['tanggal_publish']) && $i['tanggal_publish'] < $nowStr && !in_array($i['status'], ['published', 'ditolak'], true)));
         $statTotal     = count($allData);
 
         // Master data untuk form & modal (filter by bisnis + global fallback)
@@ -97,17 +126,19 @@ class JadwalUpload extends BaseController
             ->get()->getResultArray();
 
         return view('jadwal_upload/index', [
-            'judul'         => 'Dashboard Jadwal & Upload Admin Medsos',
             'konten'        => $konten,
             'statReady'     => $statReady,
             'statToday'     => $statToday,
             'statPublished' => $statPublished,
+            'statOverdue'   => $statOverdue,
             'statTotal'     => $statTotal,
             'filterStatus'  => $filterStatus,
+            'sortBy'        => $sortBy,
             'platforms'     => $platforms,
             'jenisKonten'   => $jenisKonten,
             'contentTypes'  => $contentTypes,
             'kode_role'     => $role,
+            'judul'         => 'Jadwal Upload Medsos',
         ]);
     }
 

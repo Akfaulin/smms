@@ -39,7 +39,18 @@ abstract class BaseController extends Controller
         // Caution: Do not edit this line.
         parent::initController($request, $response, $logger);
 
-        // Preload any models, libraries, etc, here.
-        // $this->session = service('session');
+        // Pastikan bisnis_aktif_id selalu terisi di session jika user sudah login
+        if (session('logged_in') && ((int) session('bisnis_aktif_id') <= 0)) {
+            $db = \Config\Database::connect();
+            $defaultBisnis = $db->table('bisnis')->where('status', 'aktif')->orderBy('urutan', 'ASC')->get()->getRowArray()
+                ?? $db->table('bisnis')->orderBy('id', 'ASC')->get()->getRowArray();
+            if ($defaultBisnis) {
+                session()->set([
+                    'bisnis_aktif_id'    => (int) $defaultBisnis['id'],
+                    'bisnis_aktif_nama'  => $defaultBisnis['nama_bisnis'],
+                    'bisnis_aktif_warna' => $defaultBisnis['warna'],
+                ]);
+            }
+        }
     }
 }
