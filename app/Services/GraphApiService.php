@@ -842,11 +842,12 @@ class GraphApiService
         $activeBaseUrl = $useIgApi ? $this->igBaseUrl : $this->baseUrl;
         $absoluteUrl   = $activeBaseUrl . $cleanEndpoint;
 
-        $rawBody    = false;
-        $statusCode = 0;
-        $curlError  = '';
+        try {
+            $rawBody    = false;
+            $statusCode = 0;
+            $curlError  = '';
 
-        // 1. Coba native cURL jika ekstensi tersedia
+            // 1. Coba native cURL jika ekstensi tersedia
         if (function_exists('curl_init') && function_exists('curl_exec')) {
             try {
                 $ch = @\curl_init();
