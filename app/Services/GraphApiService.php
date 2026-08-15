@@ -356,33 +356,47 @@ class GraphApiService
         } elseif (preg_match('/\.(jpe?g|png|webp|gif|bmp)(\?.*)?$/i', $firstUrl)) {
             $isVideo = false;
         } else {
-            // 2. Cek Content-Type via cURL HEAD jika ekstensi tidak eksplisit (misal link Google Drive)
-            if (function_exists('curl_init') && function_exists('curl_exec')) {
-                try {
-                    $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_URL, $firstUrl);
-                    curl_setopt($ch, CURLOPT_NOBODY, true);
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-                    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                    curl_exec($ch);
-                    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-                    curl_close($ch);
+            // 2. Cek Content-Type via get_headers / cURL HEAD jika ekstensi tidak eksplisit (misal link Google Drive)
+            try {
+                if (function_exists('curl_init') && function_exists('curl_exec')) {
+                    $ch = @\curl_init();
+                    if ($ch) {
+                        @\curl_setopt($ch, CURLOPT_URL, $firstUrl);
+                        @\curl_setopt($ch, CURLOPT_NOBODY, true);
+                        @\curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                        @\curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+                        @\curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+                        @\curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        @\curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                        @\curl_exec($ch);
+                        $contentType = @\curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+                        @\curl_close($ch);
 
-                    if ($contentType) {
-                        $ctLower = strtolower($contentType);
+                        if ($contentType) {
+                            $ctLower = strtolower($contentType);
+                            if (str_starts_with($ctLower, 'video/')) {
+                                $isVideo = true;
+                            } elseif (str_starts_with($ctLower, 'image/')) {
+                                $isVideo = false;
+                            }
+                        }
+                    }
+                } else {
+                    $headers = @\get_headers($firstUrl, true);
+                    $ct = $headers['Content-Type'] ?? ($headers['content-type'] ?? null);
+                    if (is_array($ct)) {
+                        $ct = end($ct);
+                    }
+                    if ($ct && is_string($ct)) {
+                        $ctLower = strtolower($ct);
                         if (str_starts_with($ctLower, 'video/')) {
                             $isVideo = true;
                         } elseif (str_starts_with($ctLower, 'image/')) {
                             $isVideo = false;
                         }
                     }
-                } catch (\Throwable $e) {
-                    $isVideo = $isReels;
                 }
-            } else {
+            } catch (\Throwable $e) {
                 $isVideo = $isReels;
             }
         }
@@ -835,25 +849,27 @@ class GraphApiService
         // 1. Coba native cURL jika ekstensi tersedia
         if (function_exists('curl_init') && function_exists('curl_exec')) {
             try {
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 35);
+                $ch = @\curl_init();
+                if ($ch) {
+                    @\curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    @\curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    @\curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                    @\curl_setopt($ch, CURLOPT_TIMEOUT, 35);
 
-                if (strtoupper($method) === 'GET') {
-                    $getUrl = $absoluteUrl . (!empty($params) ? ('?' . http_build_query($params)) : '');
-                    curl_setopt($ch, CURLOPT_URL, $getUrl);
-                } else {
-                    curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
-                    curl_setopt($ch, CURLOPT_POST, true);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+                    if (strtoupper($method) === 'GET') {
+                        $getUrl = $absoluteUrl . (!empty($params) ? ('?' . http_build_query($params)) : '');
+                        @\curl_setopt($ch, CURLOPT_URL, $getUrl);
+                    } else {
+                        @\curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
+                        @\curl_setopt($ch, CURLOPT_POST, true);
+                        @\curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+                    }
+
+                    $rawBody    = @\curl_exec($ch);
+                    $statusCode = (int) @\curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    $curlError  = @\curl_error($ch);
+                    @\curl_close($ch);
                 }
-
-                $rawBody    = curl_exec($ch);
-                $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $curlError  = curl_error($ch);
-                curl_close($ch);
             } catch (\Throwable $e) {
                 $curlError = $e->getMessage();
             }
