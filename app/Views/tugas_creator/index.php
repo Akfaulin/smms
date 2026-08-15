@@ -286,64 +286,72 @@ $roleNow = $kode_role ?? session('kode_role');
                         Caption Konten
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button type="button" class="cpb cpb-sec" id="btnAiCaption" onclick="generateAiCaption()" style="padding:4px 10px; font-size:11.5px; background:var(--cp-purple-l); color:var(--cp-purple); border-color:var(--cp-purple-l);">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
-                            Tulis Caption AI
+                        <button type="button" class="cpb cpb-sec" id="btnAiCaption" onclick="generateAiCaption()" style="padding:5px 12px; font-size:12px; background:#f0f9ff; border:1px solid #bae6fd; color:#0284c7; font-weight:600; border-radius:8px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                            Bantu Tulis Caption AI
                         </button>
                     </div>
                 </div>
-                <textarea id="detCaption" class="cp-inp" rows="4" style="width:100%; font-size:12.5px; resize:vertical;" placeholder="Tulis atau hasilkan caption untuk postingan ini..."></textarea>
-                <div style="text-align:right; margin-top:8px;">
-                    <button type="button" class="cpb cpb-pri" onclick="simpanCaptionManual()" style="padding:4px 12px; font-size:11.5px;">Simpan Caption</button>
-                </div>
-            </div>
-
-            <!-- Workspace Desain Content Creator -->
-            <div id="boxWorkspaceCreator" style="display:none; margin-top:16px; border:1px solid #c7d2fe; background:#f5f7ff; border-radius:12px; padding:16px;">
-                <div style="font-weight:700; color:#3730a3; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
-                    Workspace & Upload Hasil Desain
-                </div>
-
-                <div class="cp-form-grid" style="grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-                    <div>
-                        <label style="font-size:11.5px; font-weight:600; color:#4338ca; display:block; margin-bottom:4px;">Link Canva / Figma / Google Drive</label>
-                        <div style="display:flex; gap:6px;">
-                            <input type="url" id="detDesignUrl" class="cp-inp" placeholder="https://canva.com/design/..." style="font-size:12px;">
-                            <button type="button" class="cpb cpb-pri" onclick="simpanDesignUrl()" style="padding:4px 10px; font-size:11.5px; white-space:nowrap;">Simpan Link</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label style="font-size:11.5px; font-weight:600; color:#4338ca; display:block; margin-bottom:4px;">Direct Image URL (Opsional)</label>
-                        <div style="display:flex; gap:6px;">
-                            <input type="url" id="detImageUrl" class="cp-inp" placeholder="https://..." style="font-size:12px;">
-                            <button type="button" class="cpb cpb-sec" onclick="simpanImageUrl()" style="padding:4px 10px; font-size:11.5px; white-space:nowrap;">Simpan URL</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Direct File Upload -->
-                <div style="background:#ffffff; border:1px dashed #a5b4fc; border-radius:8px; padding:12px; text-align:center; margin-bottom:12px;">
-                    <div style="font-size:12px; font-weight:600; color:#4338ca; margin-bottom:4px;">Atau Upload File Gambar / Video Desain (Max 5MB)</div>
-                    <input type="file" id="detImageFile" accept="image/*,video/mp4" style="font-size:11.5px;" onchange="uploadImageFileDirect(this)">
-                </div>
-
-                <!-- Preview Area -->
-                <div id="detPreviewBox" style="display:none; text-align:center; margin-bottom:12px;">
-                    <img id="detPreviewImg" src="" style="max-height:180px; border-radius:8px; border:1px solid #e2e8f0;">
-                </div>
-
-                <!-- Ajukan Review ke Manager -->
-                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e0e7ff; padding-top:12px;">
-                    <span style="font-size:11.5px; color:#6366f1;">Pastikan link desain atau file gambar sudah terisi sebelum mengajukan review.</span>
-                    <button type="button" class="cpb" onclick="ajukanReviewDesign()" style="background:#4338ca; color:#ffffff; padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px;">
-                        Ajukan Review ke Manager ➔
+                <textarea id="inCaptionText" class="cp-inp" rows="4" style="width:100%; font-size:13px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:85px;" placeholder="Tulis caption manual atau gunakan bantuan AI..."></textarea>
+                <div id="detCaption" style="display:none; font-size:13.5px; line-height:1.6; color:#1e293b; background:#fff; border:1px solid #e2e8f0; padding:12px; border-radius:8px;"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                    <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none;"></div>
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanCaption" onclick="simpanCaptionManual()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
+                        Simpan Caption
                     </button>
                 </div>
             </div>
 
-            <!-- Transition Actions Area -->
-            <div id="detActionArea" style="margin-top:16px;"></div>
+            <!-- Link Desain Canva / Figma Box -->
+            <div class="cp-design-box" id="designBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00c4cc" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>
+                        Link Desain Canva / Figma
+                    </div>
+                    <a id="btnBukaCanva" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link desain belum diisi" onclick="toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan.', 'error'); return false;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        Buka Desain ↗
+                    </a>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva / Figma di sini (https://canva.com/design/...)" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanDesignUrl" onclick="simpanDesignUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
+                        Simpan Link
+                    </button>
+                </div>
+                <div id="designUrlStatus" style="font-size:12px; color:#16a34a; margin-top:6px; display:none; font-weight:500;"></div>
+            </div>
+
+            <!-- Link Gambar / Carousel / Google Drive Box -->
+            <div class="cp-upload-box" id="uploadImageBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
+                <!-- Dynamic Single or Carousel Multi-Slide rendered via renderMediaBox() -->
+            </div>
+
+            <!-- Transition Box -->
+            <div class="cp-transition-box" id="transitionBox" style="display:none;margin-top:16px">
+                <div class="cp-transition-label" style="display:flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Ajukan Review / Ubah Status
+                </div>
+                <input type="hidden" id="selTransisi" value="">
+                <div class="cp-trans-field" style="margin-bottom:12px;">
+                    <label style="margin-bottom:6px; display:block;">Pilih Status Tujuan</label>
+                    <div class="cp-status-btn-group" id="statusBtnContainer">
+                        <!-- Button status di-render via JavaScript getTransisiTersedia -->
+                    </div>
+                </div>
+                <div class="cp-catatan-wrap">
+                    <textarea class="cp-inp" id="txCatatan" placeholder="Catatan untuk Manager (opsional)..." rows="2"></textarea>
+                    <div class="cp-req-note" id="noteWajib">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:2px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Catatan wajib diisi untuk transisi ini.
+                    </div>
+                </div>
+                <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+                    <button class="cpb cpb-pri" id="btnEksekusi" onclick="eksekusiTransisi()" style="width:100%;">Ajukan Perubahan Status</button>
+                </div>
+            </div>
         </div>
 
         <!-- Tab Timeline -->
@@ -365,6 +373,10 @@ $roleNow = $kode_role ?? session('kode_role');
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
+<script>
+    window.ALL_KONTEN = <?= json_encode(array_values($konten)) ?>;
+    window.ROLE = '<?= esc($roleNow) ?>';
+</script>
 <script src="/js/content-plan.js"></script>
 <script>
 function gantiSort(val) {
@@ -380,54 +392,6 @@ function renderIdeList() {
         const text = r.textContent.toLowerCase();
         r.style.display = text.includes(q) ? '' : 'none';
     });
-}
-
-function uploadImageFileDirect(input) {
-    if (!input.files || !input.files[0] || !activeContent) return;
-    const file = input.files[0];
-    const formData = new FormData();
-    formData.append('image_file', file);
-
-    toast('Mengunggah gambar...', 'info');
-    fetch(`/dashboard/content-plan/upload-image/${activeContent.id}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-        },
-        body: formData
-    })
-    .then(r => r.json())
-    .then(res => {
-        if (res.status === 'sukses') {
-            toast('Gambar berhasil diunggah!', 'success');
-            document.getElementById('detImageUrl').value = res.url;
-            document.getElementById('detPreviewImg').src = res.url;
-            document.getElementById('detPreviewBox').style.display = 'block';
-            activeContent.image_url = res.url;
-        } else {
-            toast(res.pesan || 'Upload gagal.', 'error');
-        }
-    })
-    .catch(() => toast('Gagal mengunggah file gambar.', 'error'));
-}
-
-function ajukanReviewDesign() {
-    if (!activeContent) return;
-    const link = document.getElementById('detDesignUrl').value.trim();
-    const imgUrl = document.getElementById('detImageUrl').value.trim();
-
-    if (!link && !imgUrl && !activeContent.image_url && !activeContent.design_url) {
-        toast('Harap isi Link Desain (Canva/Drive) atau upload file gambar terlebih dahulu!', 'error');
-        return;
-    }
-
-    konfirmasi(
-        'Ajukan Review Desain',
-        'Apakah Anda yakin desain visual sudah siap untuk ditinjau oleh Manager?',
-        () => {
-            lakukanTransisi(activeContent.id, 'review_design', 'Desain selesai dikerjakan, mengajukan review ke manager.');
-        }
-    );
 }
 </script>
 <?= $this->endSection() ?>

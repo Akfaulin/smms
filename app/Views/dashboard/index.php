@@ -130,8 +130,9 @@ $STATUS_LABEL = [
                 <p style="font-size:12px; color:#be123c; margin:2px 0 0 0;">Konten di bawah ini telah melewati jadwal tayang namun belum dipublish. Segera tindak lanjuti atau jadwalkan ulang.</p>
             </div>
         </div>
-        <a href="/dashboard/content-plan?view=overdue" class="cpb" style="background:#e11d48; color:#fff; padding:7px 14px; font-size:12px; font-weight:700; border-radius:8px; text-decoration:none;">
-            Buka Tab Overdue ➔
+        <a href="/dashboard/content-plan?view=overdue" class="cpb" style="background:#e11d48; color:#fff; padding:7px 14px; font-size:12px; font-weight:700; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+            Buka Tab Overdue
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </a>
     </div>
     <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px;">

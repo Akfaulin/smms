@@ -613,13 +613,13 @@ async function bukaDetail(id) {
 
             if (scheduleBadge) {
                 if (k.auto_publish_status === 'menunggu') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:3px 10px; border-radius:12px;">⏳ Menunggu Jadwal Auto-Publish</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Menunggu Jadwal Auto-Publish</span>`;
                 } else if (k.auto_publish_status === 'diproses') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b45309; background:#fef3c7; padding:3px 10px; border-radius:12px;">⚡ Sedang Diproses Worker</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#b45309; background:#fef3c7; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Sedang Diproses Worker</span>`;
                 } else if (k.auto_publish_status === 'berhasil') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#15803d; background:#dcfce7; padding:3px 10px; border-radius:12px;">✔ Terjadwal Sukses (Published)</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#15803d; background:#dcfce7; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Terjadwal Sukses (Published)</span>`;
                 } else if (k.auto_publish_status === 'gagal') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:3px 10px; border-radius:12px;">❌ Gagal (${k.publish_attempts || 0}/3)</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Gagal (${k.publish_attempts || 0}/3)</span>`;
                 } else {
                     scheduleBadge.innerHTML = '';
                 }
@@ -760,7 +760,7 @@ function renderTimeline(log) {
     const sorted = [...log].reverse();
 
     wrap.innerHTML = sorted.map(e => {
-        const isAi = !e.user_id && e.catatan && e.catatan.includes('[🤖 AI');
+        const isAi = !e.user_id && e.catatan && (e.catatan.includes('[🤖 AI') || e.catatan.includes('[AI') || e.catatan.includes('AI Assistant'));
         const role     = e.kode_role || (isAi ? 'ai' : 'system');
         const inisial  = isAi ? 'AI' : (e.nama_user || 'S').substring(0,2).toUpperCase();
         const namaUser = isAi ? 'AI Assistant' : (e.nama_user || 'Sistem');
@@ -914,7 +914,7 @@ async function simpanJadwalAutoPublish() {
         toast(res ? res.pesan : 'Gagal menyimpan jadwal.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `📅 Simpan Jadwal`;
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Simpan Jadwal`;
         }
     }
 }
@@ -941,7 +941,7 @@ async function batalkanJadwalAutoPublish() {
         toast(res ? res.pesan : 'Gagal membatalkan jadwal.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `✕ Batalkan Jadwal`;
+            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-2px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Batalkan Jadwal`;
         }
     }
 }
@@ -1172,10 +1172,11 @@ function renderMediaBox(k, isReadOnlyMode) {
             <div class="carousel-slide-row" data-index="${idx}" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
                 <span class="slide-num-label" style="font-size:12px; font-weight:600; color:#4f46e5; min-width:54px;">Slide ${idx + 1}:</span>
                 <input type="text" class="cp-inp carousel-slide-inp" value="${escHtml(url)}" placeholder="Paste link Google Drive slide ${idx + 1}..." style="flex:1; font-size:12.5px; padding:7px 10px; border-radius:6px;" oninput="refreshCarouselSlideNumbers()" ${isReadOnlyMode ? 'readonly disabled' : ''}>
-                <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${idx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:3px; ${url ? 'background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600;' : 'opacity:0.45; filter:grayscale(0.7); cursor:pointer;'}" title="Preview Slide ${idx + 1}">
-                    Preview ↗
+                <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${idx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:4px; ${url ? 'background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600;' : 'opacity:0.45; filter:grayscale(0.7); cursor:pointer;'}" title="Preview Slide ${idx + 1}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Preview
                 </button>
-                ${(!isReadOnlyMode && slides.length > 1) ? `<button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${idx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer;" title="Hapus Slide">✕</button>` : ''}
+                ${(!isReadOnlyMode && slides.length > 1) ? `<button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${idx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Hapus Slide"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
             </div>
         `).join('');
 
@@ -1197,11 +1198,13 @@ function renderMediaBox(k, isReadOnlyMode) {
             </div>
             ${!isReadOnlyMode ? `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:8px;">
-                <button type="button" class="cpb cpb-sec" id="btnTambahSlide" onclick="tambahSlideCarousel()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:4px; background:#f8fafc; border:1px solid #cbd5e1; color:#334155;">
-                    ➕ Tambah Slide
+                <button type="button" class="cpb cpb-sec" id="btnTambahSlide" onclick="tambahSlideCarousel()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:5px; background:#f8fafc; border:1px solid #cbd5e1; color:#334155;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Tambah Slide
                 </button>
-                <button type="button" class="cpb cpb-pri" id="btnSimpanCarousel" onclick="simpanCarouselUrls()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
-                    💾 Simpan Semua Slide
+                <button type="button" class="cpb cpb-pri" id="btnSimpanCarousel" onclick="simpanCarouselUrls()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:5px; margin-left:auto;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Simpan Semua Slide
                 </button>
             </div>
             ` : ''}
@@ -1218,7 +1221,7 @@ function renderMediaBox(k, isReadOnlyMode) {
                 </div>
                 <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; ${singleUrl ? '' : 'opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);'}" ${singleUrl ? `href="${escHtml(singleUrl)}"` : `onclick="toast('Link media belum diisi.', 'error'); return false;"`}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    Preview ↗
+                    Preview
                 </a>
             </div>
             ${!isReadOnlyMode ? `
@@ -1255,10 +1258,11 @@ function tambahSlideCarousel() {
     newRow.innerHTML = `
         <span class="slide-num-label" style="font-size:12px; font-weight:600; color:#4f46e5; min-width:54px;">Slide ${nextIdx + 1}:</span>
         <input type="text" class="cp-inp carousel-slide-inp" placeholder="Paste link Google Drive slide ${nextIdx + 1}..." style="flex:1; font-size:12.5px; padding:7px 10px; border-radius:6px;" oninput="refreshCarouselSlideNumbers()">
-        <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${nextIdx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:3px; opacity:0.45; filter:grayscale(0.7); cursor:pointer;" title="Preview Slide ${nextIdx + 1}">
-            Preview ↗
+        <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${nextIdx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:4px; opacity:0.45; filter:grayscale(0.7); cursor:pointer;" title="Preview Slide ${nextIdx + 1}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Preview
         </button>
-        <button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${nextIdx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer;" title="Hapus Slide">✕</button>
+        <button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${nextIdx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Hapus Slide"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     `;
     container.appendChild(newRow);
 
@@ -1382,7 +1386,7 @@ async function simpanCarouselUrls() {
         toast(res ? res.pesan : 'Gagal menyimpan link Carousel.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `💾 Simpan Semua Slide`;
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Semua Slide`;
         }
     }
 }

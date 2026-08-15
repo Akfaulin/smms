@@ -124,7 +124,7 @@
         </button>
         <button type="button" class="cpb cpb-pri" id="btnScanTrends" onclick="scanTrendsAi()" style="padding:9px 18px; font-size:12.5px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 3px 10px rgba(37,99,235,0.25);">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            ⚡ Scan Tren AI Terkini
+            Scan Tren AI Terkini
         </button>
     </div>
 </div>

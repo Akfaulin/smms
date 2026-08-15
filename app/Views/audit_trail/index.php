@@ -272,8 +272,9 @@
             </div>
 
             <?php if (!empty($search) || $action !== 'all' || $userId > 0 || $period !== '30days'): ?>
-                <a href="/dashboard/audit-trail" class="cpb cpb-sec" style="padding:7px 12px; font-size:12px; border-radius:10px;" title="Reset Filter">
-                    ✕ Reset
+                <a href="/dashboard/audit-trail" class="cpb cpb-sec" style="padding:7px 12px; font-size:12px; border-radius:10px; display:inline-flex; align-items:center; gap:4px;" title="Reset Filter">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    Reset
                 </a>
             <?php endif; ?>
         </div>
@@ -352,7 +353,7 @@
                                 <span class="st-pill st-<?= esc($l['status_lama'] ?: 'ide_diajukan') ?>" style="opacity:0.85;">
                                     <?= esc($lblLama) ?>
                                 </span>
-                                <span style="font-size:12px; color:#94a3b8; font-weight:800;">➔</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                                 <span class="st-pill st-<?= esc($l['status_baru']) ?>" style="box-shadow:0 2px 6px rgba(0,0,0,0.06);">
                                     <?= esc($lblBaru) ?>
                                 </span>
@@ -383,8 +384,9 @@
                             <?php endif; ?>
                         </td>
                         <td style="text-align:right;">
-                            <button onclick="bukaAuditDetail(<?= $l['content_id'] ?>)" class="cpb cpb-sec" style="padding:5px 10px; font-size:11.5px; font-weight:600; border-radius:8px; white-space:nowrap; background:#f8fafc; border:1px solid #cbd5e1;">
-                                Detail ↗
+                            <button onclick="bukaAuditDetail(<?= $l['content_id'] ?>)" class="cpb cpb-sec" style="padding:5px 10px; font-size:11.5px; font-weight:600; border-radius:8px; white-space:nowrap; background:#f8fafc; border:1px solid #cbd5e1; display:inline-flex; align-items:center; gap:4px;">
+                                Detail
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                             </button>
                         </td>
                     </tr>
@@ -404,7 +406,9 @@
                 <h3 id="matJudul" style="font-size:17px; font-weight:800; color:#0f172a; margin:4px 0 0 0;">Judul Konten</h3>
                 <p id="matMeta" style="font-size:12px; color:#64748b; margin:3px 0 0 0;">Platform & Jenis</p>
             </div>
-            <button onclick="tutupModalAuditDirect()" style="background:#f1f5f9; border:none; width:32px; height:32px; border-radius:50%; font-size:16px; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+            <button onclick="tutupModalAuditDirect()" style="background:#f1f5f9; border:none; width:32px; height:32px; border-radius:50%; color:#64748b; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Tutup">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
         </div>
 
         <div style="margin-bottom:20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px;">

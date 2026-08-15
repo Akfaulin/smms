@@ -170,19 +170,23 @@ $roleNow = $kode_role ?? session('kode_role');
                             <div style="margin-top:4px;">
                             <?php if ($k['auto_publish_status'] === 'menunggu'): ?>
                                 <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:2px 8px; border-radius:10px;" title="Jadwal: <?= esc($k['scheduled_at']) ?>">
-                                    ⏳ Terjadwal: <?= date('d/m H:i', strtotime($k['scheduled_at'])) ?>
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    Terjadwal: <?= date('d/m H:i', strtotime($k['scheduled_at'])) ?>
                                 </span>
                             <?php elseif ($k['auto_publish_status'] === 'diproses'): ?>
                                 <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#b45309; background:#fef3c7; padding:2px 8px; border-radius:10px;">
-                                    ⚡ Diproses
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                    Diproses
                                 </span>
                             <?php elseif ($k['auto_publish_status'] === 'berhasil'): ?>
                                 <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#15803d; background:#dcfce7; padding:2px 8px; border-radius:10px;">
-                                    ✔ Auto-Published
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    Auto-Published
                                 </span>
                             <?php elseif ($k['auto_publish_status'] === 'gagal'): ?>
                                 <span style="display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:2px 8px; border-radius:10px;" title="<?= esc($k['last_error'] ?? '') ?>">
-                                    ❌ Gagal (<?= (int)($k['publish_attempts'] ?? 0) ?>/3)
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    Gagal (<?= (int)($k['publish_attempts'] ?? 0) ?>/3)
                                 </span>
                             <?php endif; ?>
                             </div>
@@ -374,11 +378,13 @@ $roleNow = $kode_role ?? session('kode_role');
                 </p>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <input type="datetime-local" id="inScheduledAt" class="cp-inp" style="flex:1; min-width:200px; padding:8px 12px; border-radius:8px; font-size:13px; background:#fff;">
-                    <button type="button" class="cpb" id="btnSimpanJadwal" onclick="simpanJadwalAutoPublish()" style="background:#4f46e5; color:#fff; font-weight:600; padding:8px 16px; border-radius:8px; font-size:12.5px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
-                        📅 Simpan Jadwal
+                    <button type="button" class="cpb" id="btnSimpanJadwal" onclick="simpanJadwalAutoPublish()" style="background:#4f46e5; color:#fff; font-weight:600; padding:8px 16px; border-radius:8px; font-size:12.5px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Simpan Jadwal
                     </button>
-                    <button type="button" class="cpb" id="btnBatalJadwal" onclick="batalkanJadwalAutoPublish()" style="display:none; background:#fee2e2; color:#b91c1c; font-weight:600; padding:8px 14px; border-radius:8px; font-size:12.5px; border:1px solid #fca5a5; cursor:pointer;">
-                        ✕ Batalkan Jadwal
+                    <button type="button" class="cpb" id="btnBatalJadwal" onclick="batalkanJadwalAutoPublish()" style="display:none; background:#fee2e2; color:#b91c1c; font-weight:600; padding:8px 14px; border-radius:8px; font-size:12.5px; border:1px solid #fca5a5; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        Batalkan Jadwal
                     </button>
                 </div>
                 <div id="scheduleErrorNote" style="display:none; margin-top:10px; font-size:12px; color:#b91c1c; background:#fef2f2; padding:8px 12px; border-radius:8px; border:1px solid #fecaca; line-height:1.4;"></div>
