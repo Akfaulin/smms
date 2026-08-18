@@ -45,11 +45,11 @@ class MetaApi extends BaseConfig
     {
         parent::__construct();
 
-        $this->appId           = getenv('META_APP_ID') ?: $this->appId;
-        $this->appSecret        = getenv('META_APP_SECRET') ?: $this->appSecret;
-        $this->apiVersion       = getenv('META_API_VERSION') ?: $this->apiVersion;
-        $this->igUsername       = getenv('META_IG_USERNAME') ?: $this->igUsername;
-        $this->igAccountId     = getenv('META_IG_ACCOUNT_ID') ?: $this->igAccountId;
-        $this->userAccessToken = getenv('META_USER_ACCESS_TOKEN') ?: getenv('META_ACCESS_TOKEN') ?: $this->userAccessToken;
+        $this->appId           = trim(env('META_APP_ID') ?: ($_ENV['META_APP_ID'] ?? (getenv('META_APP_ID') ?: $this->appId)));
+        $this->appSecret        = trim(env('META_APP_SECRET') ?: ($_ENV['META_APP_SECRET'] ?? (getenv('META_APP_SECRET') ?: $this->appSecret)));
+        $this->apiVersion       = trim(env('META_API_VERSION') ?: ($_ENV['META_API_VERSION'] ?? (getenv('META_API_VERSION') ?: $this->apiVersion)));
+        $this->igUsername       = trim(env('META_IG_USERNAME') ?: ($_ENV['META_IG_USERNAME'] ?? (getenv('META_IG_USERNAME') ?: $this->igUsername)));
+        $this->igAccountId     = trim(env('META_IG_ACCOUNT_ID') ?: ($_ENV['META_IG_ACCOUNT_ID'] ?? (getenv('META_IG_ACCOUNT_ID') ?: $this->igAccountId)));
+        $this->userAccessToken = trim(env('META_USER_ACCESS_TOKEN') ?: ($_ENV['META_USER_ACCESS_TOKEN'] ?? (getenv('META_USER_ACCESS_TOKEN') ?: (env('META_ACCESS_TOKEN') ?: ($_ENV['META_ACCESS_TOKEN'] ?? (getenv('META_ACCESS_TOKEN') ?: $this->userAccessToken))))));
     }
 }

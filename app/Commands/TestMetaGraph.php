@@ -88,21 +88,29 @@ class TestMetaGraph extends BaseCommand
         }
 
         // ---------------------------------------------------------------------
-        // TEST 3e: detectMediaType (Image vs Video/Reels Detection)
+        // TEST 3e: resolvePublishTarget (Story vs Reels vs Feed vs Carousel)
         // ---------------------------------------------------------------------
-        CLI::write("[TEST 3e] Testing detectMediaType()...", 'white');
-        $imgType = $service->detectMediaType('https://images.unsplash.com/photo.jpg', 'Static Post');
-        $vidType = $service->detectMediaType('https://drive.google.com/uc?export=view&id=1AKScIXOCNqAMtC1TYv9abvILKeauv0NX', 'Reels / Video');
-        $vidExt  = $service->detectMediaType('https://example.com/sample.mp4');
+        CLI::write("[TEST 3e] Testing resolvePublishTarget()...", 'white');
+        $storyVid = $service->resolvePublishTarget('https://drive.google.com/uc?export=view&id=1AKScIXOCNqAMtC1TYv9abvILKeauv0NX', 'Story');
+        $storyImg = $service->resolvePublishTarget('https://images.unsplash.com/photo.jpg', 'Story');
+        $reelsVid = $service->resolvePublishTarget('https://drive.google.com/uc?export=view&id=1AKScIXOCNqAMtC1TYv9abvILKeauv0NX', 'Reels / Video');
+        $feedImg  = $service->resolvePublishTarget('https://images.unsplash.com/photo.jpg', 'Static Post');
+        $carousel = $service->resolvePublishTarget(json_encode([
+            'https://images.unsplash.com/photo1.jpg',
+            'https://images.unsplash.com/photo2.jpg',
+            'https://images.unsplash.com/photo3.jpg',
+        ]), 'Carousel');
 
-        CLI::write(" -> Image URL detected as: {$imgType}", ($imgType === 'IMAGE') ? 'green' : 'red');
-        CLI::write(" -> Drive MP4 detected as: {$vidType}", ($vidType === 'VIDEO') ? 'green' : 'red');
-        CLI::write(" -> MP4 extension detected as: {$vidExt}", ($vidExt === 'VIDEO') ? 'green' : 'red');
+        CLI::write(" -> Story (MP4)    Target: {$storyVid['target']} (Label: {$storyVid['label']})", ($storyVid['target'] === 'STORIES' && $storyVid['is_video']) ? 'green' : 'red');
+        CLI::write(" -> Story (JPG)    Target: {$storyImg['target']} (Label: {$storyImg['label']})", ($storyImg['target'] === 'STORIES' && !$storyImg['is_video']) ? 'green' : 'red');
+        CLI::write(" -> Reels (MP4)    Target: {$reelsVid['target']} (Label: {$reelsVid['label']})", ($reelsVid['target'] === 'REELS' && $reelsVid['is_video']) ? 'green' : 'red');
+        CLI::write(" -> Feed (JPG)     Target: {$feedImg['target']}  (Label: {$feedImg['label']})", ($feedImg['target'] === 'IMAGE' && !$feedImg['is_video']) ? 'green' : 'red');
+        CLI::write(" -> Carousel (3x)  Target: {$carousel['target']} (Label: {$carousel['label']})", ($carousel['target'] === 'CAROUSEL' && count($carousel['urls']) === 3) ? 'green' : 'red');
 
-        if ($imgType === 'IMAGE' && $vidType === 'VIDEO' && $vidExt === 'VIDEO') {
-            CLI::write(" -> [PASSED] Media types correctly detected!\n", 'green');
+        if ($storyVid['target'] === 'STORIES' && $reelsVid['target'] === 'REELS' && $feedImg['target'] === 'IMAGE' && $carousel['target'] === 'CAROUSEL') {
+            CLI::write(" -> [PASSED] All publishing targets (Story, Reels, Feed, Carousel) correctly routed!\n", 'green');
         } else {
-            CLI::write(" -> [FAILED] Media detection error.\n", 'red');
+            CLI::write(" -> [FAILED] Target routing error.\n", 'red');
         }
 
         CLI::write("====================================================================", 'yellow');

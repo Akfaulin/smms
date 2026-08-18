@@ -189,7 +189,7 @@ function renderNotifList(notifs) {
     if (!listEl) return;
 
     if (!notifs.length) {
-        listEl.innerHTML = '<div class="notif-empty">Tidak ada notifikasi baru 🎉</div>';
+        listEl.innerHTML = '<div class="notif-empty">Tidak ada notifikasi baru</div>';
         return;
     }
 

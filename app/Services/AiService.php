@@ -13,14 +13,79 @@ class AiService
 
     public function __construct()
     {
-        $this->client = \Config\Services::curlrequest([
-            'baseURI' => 'https://generativelanguage.googleapis.com',
-            'timeout' => 30,
-        ]);
+        if (function_exists('curl_init') && function_exists('curl_exec')) {
+            $this->client = \Config\Services::curlrequest([
+                'baseURI' => 'https://generativelanguage.googleapis.com',
+                'timeout' => 30,
+            ]);
+        }
 
         // Ambil API key dari env / getenv / $_ENV
         $this->apiKey = trim(env('GEMINI_API_KEY') ?: (getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? '')));
         $this->logModel = new AiGenerationLogModel();
+    }
+
+    /**
+     * Fallback HTTP POST via PHP Stream Context jika ekstensi cURL tidak tersedia di hosting
+     */
+    protected function postViaStream(string $fullUrl, array $payload): ?array
+    {
+        $context = stream_context_create([
+            'http' => [
+                'method'        => 'POST',
+                'header'        => "Content-Type: application/json\r\nAccept: application/json\r\n",
+                'content'       => json_encode($payload),
+                'timeout'       => 30,
+                'ignore_errors' => true,
+            ],
+            'ssl' => [
+                'verify_peer'      => false,
+                'verify_peer_name' => false,
+            ]
+        ]);
+
+        $res = @file_get_contents($fullUrl, false, $context);
+        if ($res === false) {
+            return null;
+        }
+
+        return json_decode($res, true);
+    }
+
+    /**
+     * Fallback HTTP POST via raw SSL Socket (fsockopen) jika cURL dan file_get_contents dinonaktifkan
+     */
+    protected function postViaSocket(string $path, array $payload): ?array
+    {
+        $jsonPayload = json_encode($payload);
+        $host = 'generativelanguage.googleapis.com';
+        $port = 443;
+
+        $fp = @fsockopen("ssl://{$host}", $port, $errno, $errstr, 20);
+        if (! $fp) {
+            return null;
+        }
+
+        $out  = "POST {$path} HTTP/1.1\r\n";
+        $out .= "Host: {$host}\r\n";
+        $out .= "Content-Type: application/json\r\n";
+        $out .= "Content-Length: " . strlen($jsonPayload) . "\r\n";
+        $out .= "Connection: Close\r\n\r\n";
+        $out .= $jsonPayload;
+
+        fwrite($fp, $out);
+        $response = '';
+        while (! feof($fp)) {
+            $response .= fgets($fp, 4096);
+        }
+        fclose($fp);
+
+        $parts = explode("\r\n\r\n", $response, 2);
+        if (isset($parts[1])) {
+            return json_decode($parts[1], true);
+        }
+
+        return null;
     }
 
     /**
@@ -32,12 +97,13 @@ class AiService
             return "Fitur AI belum dikonfigurasi. Mohon isi GEMINI_API_KEY di file .env.";
         }
 
-        // Daftar model aktif dengan fallback otomatis
+        // Daftar model aktif Gemini yang didukung Google API saat ini
         $availableModels = [
             'gemini-3.5-flash-lite',
-            'gemini-3.1-flash-lite',
             'gemini-3.5-flash',
             'gemini-3.7-flash',
+            'gemini-3.1-flash-lite',
+            'gemini-3-flash-preview',
         ];
 
         $payload = [
@@ -55,35 +121,67 @@ class AiService
         ];
 
         $lastErrorMsg = '';
+        $hasCurl = function_exists('curl_init') && function_exists('curl_exec') && $this->client !== null;
 
         foreach ($availableModels as $model) {
-            $url = '/v1beta/models/' . $model . ':generateContent?key=' . $this->apiKey;
+            $path = '/v1beta/models/' . $model . ':generateContent?key=' . $this->apiKey;
+            $fullUrl = 'https://generativelanguage.googleapis.com' . $path;
 
             try {
-                $response = $this->client->post($url, [
-                    'json'        => $payload,
-                    'headers'     => ['Content-Type' => 'application/json'],
-                    'http_errors' => false // agar bisa menangkap pesan error API
-                ]);
+                if ($hasCurl) {
+                    $response = $this->client->post($path, [
+                        'json'        => $payload,
+                        'headers'     => ['Content-Type' => 'application/json'],
+                        'http_errors' => false // agar bisa menangkap pesan error API
+                    ]);
 
-                $statusCode = $response->getStatusCode();
-                $body = json_decode($response->getBody(), true);
+                    $statusCode = $response->getStatusCode();
+                    $body = json_decode($response->getBody(), true);
 
-                if ($statusCode === 200 && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                    if ($statusCode === 200 && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                        return $body['candidates'][0]['content']['parts'][0]['text'];
+                    }
+
+                    log_message('warning', "Gemini API Model {$model} returned status {$statusCode}: " . $response->getBody());
+
+                    if ($statusCode === 401 || $statusCode === 403) {
+                        return "API Key Gemini tidak valid (Error {$statusCode}). Pastikan menggunakan API Key resmi Google AI Studio (berawalan 'AIzaSy...' atau 'AQ...').";
+                    }
+
+                    if (isset($body['error']['message'])) {
+                        $lastErrorMsg = $body['error']['message'];
+                    }
+                } else {
+                    // Fallback 1: PHP stream (file_get_contents)
+                    $body = $this->postViaStream($fullUrl, $payload);
+                    if (! $body) {
+                        // Fallback 2: Direct SSL socket
+                        $body = $this->postViaSocket($path, $payload);
+                    }
+
+                    if ($body && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
+                        return $body['candidates'][0]['content']['parts'][0]['text'];
+                    }
+                    if ($body && isset($body['error']['message'])) {
+                        $lastErrorMsg = $body['error']['message'];
+                    }
+                }
+            } catch (\Throwable $e) {
+                log_message('error', "Exception on Gemini model {$model}: " . $e->getMessage());
+                // Jika error curl_exec, coba stream / socket fallback
+                $body = $this->postViaStream($fullUrl, $payload);
+                if (! $body) {
+                    $body = $this->postViaSocket($path, $payload);
+                }
+                if ($body && isset($body['candidates'][0]['content']['parts'][0]['text'])) {
                     return $body['candidates'][0]['content']['parts'][0]['text'];
                 }
-
-                log_message('warning', "Gemini API Model {$model} returned status {$statusCode}: " . $response->getBody());
-
-                if ($statusCode === 401 || $statusCode === 403) {
-                    return "API Key Gemini tidak valid (Error {$statusCode}). Pastikan menggunakan API Key resmi Google AI Studio (berawalan 'AIzaSy...').";
-                }
-
-                $lastErrorMsg = $body['error']['message'] ?? "Status {$statusCode}";
-            } catch (\Throwable $e) {
-                log_message('error', "CURL Exception on model {$model}: " . $e->getMessage());
                 $lastErrorMsg = $e->getMessage();
             }
+        }
+
+        if (! $hasCurl && empty($lastErrorMsg)) {
+            return "Ekstensi PHP cURL belum aktif di hosting. Mohon centang 'curl' pada menu 'Select PHP Version' -> 'Extensions' di cPanel hosting Anda.";
         }
 
         return "Gagal memanggil API AI: " . ($lastErrorMsg ?: 'Server AI sedang sibuk.');
@@ -235,6 +333,77 @@ class AiService
         $this->logUsage(null, $userId, 'brief_gen', $prompt, $cleanOutput);
 
         return $cleanOutput;
+    }
+
+    // =========================================================================
+    // FITUR: AI REAL-TIME TREND RADAR DISCOVERY
+    // =========================================================================
+    /**
+     * Menghasilkan kurasi tren terkini berdasarkan nama & kategori bisnis.
+     */
+    public function discoverTrends(string $namaBisnis = '', string $kategoriBisnis = '', string $platform = 'TikTok & Reels', int $userId = 0): array
+    {
+        $prompt = "Kamu adalah Peneliti Tren Media Sosial & Viral Content Strategist di Indonesia. " .
+                  "Hari ini tanggal " . date('d F Y') . ". " .
+                  "Tolong carikan dan kurasi 4 sampai 5 TREN KONTEN MEDIA SOSIAL TERKINI & PALING RELEVAN untuk brand/bisnis berikut:\n" .
+                  "- Nama Bisnis: " . ($namaBisnis ?: 'Brand Lokal') . "\n" .
+                  "- Niche / Kategori Industri: " . ($kategoriBisnis ?: 'Umum / Retail / F&B / Jasa / Fashion') . "\n" .
+                  "- Target Platform: " . $platform . "\n\n" .
+                  "Berikan respon HANYA dalam format valid JSON (array of objects) tanpa kata pengantar atau markdown block lainnya. Setiap object HARUS memiliki keys:\n" .
+                  "[\n" .
+                  "  {\n" .
+                  "    \"judul\": \"Nama Sound / Format Tren (contoh: Sound Tren 'Jedag Jedug Estetik' / Format 'POV: Kamu nemuin...')\",\n" .
+                  "    \"badge\": \"Badge Kategori (pilih salah satu: 'Audio Viral' / 'Format FYP' / 'Hook Trend' / 'CapCut Trend' / 'POV Format')\",\n" .
+                  "    \"category\": \"Platform (contoh: 'TikTok, Reels & Linkedin')\",\n" .
+                  "    \"desk\": \"Penjelasan tren & kenapa ini sedang viral/ramai saat ini (1-2 kalimat)\",\n" .
+                  "    \"example\": \"Contoh implementasi konsep / hook spesifik untuk produk bisnis ini\"\n" .
+                  "  }\n" .
+                  "]";
+
+        $output = $this->callGemini($prompt);
+        $this->logUsage(null, $userId, 'trend_radar', $prompt, $output);
+
+        // Parsing JSON dari AI
+        $cleanJson = preg_replace('/^```json\s*/i', '', trim($output));
+        $cleanJson = preg_replace('/```$/', '', trim($cleanJson));
+        $cleanJson = trim($cleanJson);
+
+        $parsed = json_decode($cleanJson, true);
+        if (is_array($parsed) && !empty($parsed)) {
+            return $parsed;
+        }
+
+        // Fallback jika format JSON AI tidak terbaca sempurna
+        return [
+            [
+                'judul' => 'Tren Storytelling "A Day in My Life as Brand Owner"',
+                'badge' => 'Format FYP',
+                'category' => $platform,
+                'desk' => 'Format konten behind-the-scenes dengan narasi hangat dan transparan yang membangun kepercayaan pelanggan.',
+                'example' => 'Tunjukkan proses persiapan pesanan atau riset produk dengan voiceover natural.'
+            ],
+            [
+                'judul' => 'Format POV: Ketika Menemukan Solusi Terbaik',
+                'badge' => 'POV Format',
+                'category' => $platform,
+                'desk' => 'Transisi ekspresi wajah dari bingung menjadi puas setelah menggunakan solusi dari produk brand.',
+                'example' => 'Tampilkan perbandingan Sebelum vs Sesudah dalam 5 detik pertama video.'
+            ],
+            [
+                'judul' => 'Hook Trend: "Jangan beli ini sebelum kamu tahu..."',
+                'badge' => 'Hook Trend',
+                'category' => $platform,
+                'desk' => 'Reverse psychology hook yang memicu rasa penasaran penonton untuk menyimak edukasi produk.',
+                'example' => 'Jangan coba promo ini kalau kamu belum siap kebanjiran manfaatnya!'
+            ],
+            [
+                'judul' => 'Template CapCut: Transisi Beat Drop Estetik',
+                'badge' => 'CapCut Trend',
+                'category' => $platform,
+                'desk' => 'Template video sinkronisasi foto produk dengan hentakan musik viral yang memiliki retensi tontonan tinggi.',
+                'example' => 'Kombinasikan 5 foto detail produk dengan tempo musik cepat.'
+            ]
+        ];
     }
 }
 

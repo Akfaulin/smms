@@ -84,6 +84,9 @@
             </svg>
             Tugas Desain
         </a>
+        <?php endif; ?>
+
+        <?php if (in_array($role, ['content_creator', 'creative_team', 'manager', 'superadmin', 'owner'], true)): ?>
         <a href="/dashboard/asset-library" class="nav-item <?= str_contains(current_url(), 'asset-library') ? 'active' : '' ?>">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -123,6 +126,12 @@
                 <line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
             Content Plan
+        </a>
+        <a href="/dashboard/audit-trail" class="nav-item <?= str_contains(current_url(), 'audit-trail') ? 'active' : '' ?>">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            History & Audit Trail
         </a>
         <?php if (in_array($role, ['superadmin', 'owner', 'manager'], true)): ?>
         <a href="/dashboard/laporan" class="nav-item <?= str_contains(current_url(), 'laporan') ? 'active' : '' ?>">

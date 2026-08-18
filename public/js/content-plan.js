@@ -51,15 +51,49 @@ function getTransisiTersedia(statusNow) {
 function getFilteredData() {
     const status   = document.getElementById('filterStatus')?.value || '';
     const platform = document.getElementById('filterPlatform')?.value || '';
+    const sortBy   = document.getElementById('filterSort')?.value || 'publish_mepet';
     const query    = (document.getElementById('searchQuery')?.value || '').toLowerCase().trim();
-    const allKonten = window.ALL_KONTEN || [];
+    const allKonten = (window.ALL_KONTEN || []).slice();
+    const now      = new Date();
 
-    return allKonten.filter(k => {
-        const matchS = !status || k.status === status;
+    const filtered = allKonten.filter(k => {
+        let matchS = true;
+        if (status === 'overdue') {
+            matchS = k.tanggal_publish && (new Date(k.tanggal_publish) < now) && !['published', 'ditolak'].includes(k.status);
+        } else if (status) {
+            matchS = (k.status === status);
+        }
+
         const matchP = !platform || (k.platforms || []).some(p => String(p.id) === platform);
         const matchQ = !query || (k.judul_konten || '').toLowerCase().includes(query) || (k.deskripsi || '').toLowerCase().includes(query);
         return matchS && matchP && matchQ;
     });
+
+    filtered.sort((a, b) => {
+        const pubA = a.tanggal_publish ? new Date(a.tanggal_publish).getTime() : null;
+        const pubB = b.tanggal_publish ? new Date(b.tanggal_publish).getTime() : null;
+        const creA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const creB = b.created_at ? new Date(b.created_at).getTime() : 0;
+
+        if (sortBy === 'publish_jauh') {
+            if (pubA === null && pubB === null) return creB - creA;
+            if (pubA === null) return 1;
+            if (pubB === null) return -1;
+            return pubB - pubA;
+        } else if (sortBy === 'diajukan_terbaru') {
+            return creB - creA;
+        } else if (sortBy === 'diajukan_terlama') {
+            return creA - creB;
+        } else {
+            // default: publish_mepet
+            if (pubA === null && pubB === null) return creB - creA;
+            if (pubA === null) return 1;
+            if (pubB === null) return -1;
+            return pubA - pubB;
+        }
+    });
+
+    return filtered;
 }
 
 // ─── View Switch ──────────────────────────────────────────
@@ -141,7 +175,7 @@ function buildCalendar() {
         if (isWE)    cls += ' we';
         if (dayKonten.length > 0) cls += ' has-c';
 
-        const MAX_PILLS = 3;
+        const MAX_PILLS = 6;
         const pills = dayKonten.slice(0, MAX_PILLS).map(k => {
             const pillCls = statusClass(k.status) + (isPast ? ' past-pill' : '');
             const timeStr = (k.tanggal_publish && k.tanggal_publish.length > 10) ? k.tanggal_publish.substring(11, 16) : '';
@@ -150,11 +184,11 @@ function buildCalendar() {
         }).join('');
 
         const more = dayKonten.length > MAX_PILLS
-            ? `<div class="cp-more">+${dayKonten.length - MAX_PILLS}</div>` : '';
+            ? `<div class="cp-more" onclick="event.stopPropagation();switchView('list')">+${dayKonten.length - MAX_PILLS} lagi</div>` : '';
 
         const hint = isPast
-            ? `<div class="cp-lock-hint">🔒</div>`
-            : `<div class="cp-add-hint" onclick="event.stopPropagation();bukaFormTambah('${dateStr}')">+ tambah</div>`;
+            ? `<div class="cp-lock-hint" title="Sudah lewat"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>`
+            : `<div class="cp-add-hint" onclick="event.stopPropagation();bukaFormTambah('${dateStr}')">+ Tambah</div>`;
 
         html += `
         <div class="${cls}" onclick="dayClick('${dateStr}', ${isPast ? 1 : 0})">
@@ -196,22 +230,55 @@ function buildList() {
     }
 
     const today = new Date(); today.setHours(0,0,0,0);
+    const now = new Date();
 
     tbody.innerHTML = data.map((k, i) => {
-        const isPast = k.tanggal_publish && new Date(k.tanggal_publish) < today;
-        const tgl    = k.tanggal_publish ? formatTgl(k.tanggal_publish) : '—';
         const sCls   = statusClass(k.status);
         const plat   = k.platform_str || '—';
 
-        return `<tr class="${isPast ? 'past-row' : ''}" onclick="bukaDetail(${k.id})" style="cursor:pointer">
-            <td style="color:var(--cp-muted)">${i+1}</td>
+        let tglHtml = '<span style="color:#94a3b8; font-size:12px; font-style:italic;">Belum dijadwalkan</span>';
+        if (k.tanggal_publish) {
+            const pubDate = new Date(k.tanggal_publish);
+            const pubDay = new Date(pubDate); pubDay.setHours(0,0,0,0);
+            const diffDays = Math.round((pubDay - today) / 86400000);
+            const isPast = (pubDate < now);
+            const tglStr = formatTgl(k.tanggal_publish);
+            const timeStr = k.tanggal_publish.length > 10 ? k.tanggal_publish.substring(11, 16) : '';
+            const fullTgl = (timeStr && timeStr !== '00:00') ? `${tglStr}, ${timeStr}` : tglStr;
+
+            let badgeHtml = '';
+            if (k.status === 'published') {
+                badgeHtml = '<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> Tayang</span>';
+            } else if (isPast) {
+                badgeHtml = '<span style="background:#fee2e2; color:#dc2626; border:1px solid #fecaca; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Lewat Tenggat</span>';
+            } else if (diffDays === 0) {
+                badgeHtml = '<span style="background:#fef3c7; color:#d97706; border:1px solid #fde68a; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Hari Ini</span>';
+            } else if (diffDays === 1) {
+                badgeHtml = '<span style="background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Besok</span>';
+            } else {
+                badgeHtml = `<span style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-top:2px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${diffDays} Hari Lagi</span>`;
+            }
+
+            tglHtml = `<div>
+                <div style="font-weight:700; font-size:12.5px; color:#0f172a; white-space:nowrap; display:flex; align-items:center; gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ${fullTgl}</div>
+                ${badgeHtml}
+            </div>`;
+        }
+
+        const createdHtml = k.created_at ? `<div style="font-size:11px; color:#64748b; margin-top:4px; white-space:nowrap; display:flex; align-items:center; gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Diajukan: ${formatTgl(k.created_at)}</div>` : '';
+
+        return `<tr onclick="bukaDetail(${k.id})" style="cursor:pointer">
+            <td style="color:var(--cp-muted); text-align:center;">${i+1}</td>
             <td>
-                <div style="font-weight:700;font-size:13px">${escHtml(k.judul_konten)}</div>
+                <div style="font-weight:700;font-size:13px; color:#0f172a;">${escHtml(k.judul_konten)}</div>
                 ${k.nama_jenis ? `<div style="font-size:11px;color:var(--cp-muted);margin-top:2px">${escHtml(k.nama_jenis)}${k.nama_pillar ? ' · '+escHtml(k.nama_pillar) : ''}</div>` : ''}
             </td>
             <td><span class="cp-badge ${sCls}">${STATUS_LABEL[k.status]||k.status}</span></td>
-            <td style="font-size:12px;color:var(--cp-muted)">${escHtml(plat)}</td>
-            <td style="font-size:12px">${tgl}</td>
+            <td style="font-size:12.5px;color:#475569;">${escHtml(plat)}</td>
+            <td>
+                ${tglHtml}
+                ${createdHtml}
+            </td>
             <td style="font-size:12px;color:var(--cp-muted)">${escHtml(k.nama_pembuat||'—')}</td>
         </tr>`;
     }).join('');
@@ -443,6 +510,20 @@ async function bukaDetail(id) {
         statusCaption.textContent = '';
     }
 
+    // Atur visibilitas Form Hasil Desain (Link Canva & Link Gambar):
+    // Saat status masih 'ide_diajukan' (Pengajuan Ide dari Tim Creative), form hasil desain TIDAK DITAMPILKAN
+    // karena Tim Creative tidak membuat desain (hanya ide/brief). Form hasil desain baru muncul saat Creator mengerjakan/mengajukan desain.
+    const isIdeDiajukan = (status === 'ide_diajukan');
+    const wrapMateriDesain = document.getElementById('wrapMateriDesain');
+    const designBox = document.getElementById('designBox');
+    const uploadImageBox = document.getElementById('uploadImageBox');
+    const gridDesainLinks = document.getElementById('gridDesainLinks');
+
+    if (wrapMateriDesain) wrapMateriDesain.style.display = isIdeDiajukan ? 'none' : 'grid';
+    if (designBox) designBox.style.display = isIdeDiajukan ? 'none' : 'block';
+    if (uploadImageBox) uploadImageBox.style.display = isIdeDiajukan ? 'none' : 'block';
+    if (gridDesainLinks) gridDesainLinks.style.display = isIdeDiajukan ? 'none' : 'grid';
+
     // Smart Canva Link Logic
     const inDesignUrl = document.getElementById('inDesignUrl');
     const btnBukaCanva = document.getElementById('btnBukaCanva');
@@ -481,57 +562,12 @@ async function bukaDetail(id) {
         }
     }
 
-    // Setup Buka Gambar / Preview Button & Image URL field
-    const btnBukaGambar = document.getElementById('btnBukaGambar');
-    const inImageUrl = document.getElementById('inImageUrl');
-
-    if (inImageUrl) {
-        inImageUrl.value = k.image_url || '';
-        if (isReadOnlyMode && inImageUrl.parentElement) {
-            inImageUrl.parentElement.style.display = 'none'; // Hide edit input & simpan button for Read-Only roles
-            const noteEl = inImageUrl.parentElement.nextElementSibling;
-            if (noteEl && noteEl.tagName === 'DIV' && noteEl.textContent.includes('Google Drive')) {
-                noteEl.style.display = 'none';
-            }
-        } else if (inImageUrl.parentElement) {
-            inImageUrl.parentElement.style.display = 'flex';
-        }
-    }
-
-    if (btnBukaGambar) {
-        if (k.image_url && k.image_url.trim() !== '') {
-            btnBukaGambar.href = k.image_url;
-            btnBukaGambar.target = '_blank';
-            btnBukaGambar.removeAttribute('onclick');
-            btnBukaGambar.title = 'Buka gambar di tab baru';
-            btnBukaGambar.style.opacity = '';
-            btnBukaGambar.style.cursor = '';
-            btnBukaGambar.style.pointerEvents = '';
-            btnBukaGambar.style.filter = '';
-        } else {
-            btnBukaGambar.removeAttribute('href');
-            btnBukaGambar.removeAttribute('target');
-            btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi oleh Creator.', 'error'); return false;");
-            btnBukaGambar.title = 'Link gambar belum diisi';
-            btnBukaGambar.style.opacity = '0.45';
-            btnBukaGambar.style.cursor = 'not-allowed';
-            btnBukaGambar.style.pointerEvents = 'auto';
-            btnBukaGambar.style.filter = 'grayscale(0.7)';
-        }
-    }
+    // Render dynamic media box (Single Image/Video or Carousel Multi-Slide)
+    renderMediaBox(k, isReadOnlyMode);
 
     if (statusDesignUrl) {
         statusDesignUrl.style.display = 'none';
         statusDesignUrl.textContent = '';
-    }
-
-    // Reset status element and populate image URL field
-    const statusUpload = document.getElementById('uploadImageStatus');
-    if (inImageUrl) inImageUrl.value = k.image_url || '';
-
-    if (statusUpload) {
-        statusUpload.style.display = 'none';
-        statusUpload.textContent = '';
     }
 
     // Transition box
@@ -577,13 +613,13 @@ async function bukaDetail(id) {
 
             if (scheduleBadge) {
                 if (k.auto_publish_status === 'menunggu') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:3px 10px; border-radius:12px;">⏳ Menunggu Jadwal Auto-Publish</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#4338ca; background:#e0e7ff; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Menunggu Jadwal Auto-Publish</span>`;
                 } else if (k.auto_publish_status === 'diproses') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b45309; background:#fef3c7; padding:3px 10px; border-radius:12px;">⚡ Sedang Diproses Worker</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#b45309; background:#fef3c7; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Sedang Diproses Worker</span>`;
                 } else if (k.auto_publish_status === 'berhasil') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#15803d; background:#dcfce7; padding:3px 10px; border-radius:12px;">✔ Terjadwal Sukses (Published)</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#15803d; background:#dcfce7; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Terjadwal Sukses (Published)</span>`;
                 } else if (k.auto_publish_status === 'gagal') {
-                    scheduleBadge.innerHTML = `<span style="font-size:11.5px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:3px 10px; border-radius:12px;">❌ Gagal (${k.publish_attempts || 0}/3)</span>`;
+                    scheduleBadge.innerHTML = `<span style="display:inline-flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600; color:#b91c1c; background:#fee2e2; padding:3px 10px; border-radius:12px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Gagal (${k.publish_attempts || 0}/3)</span>`;
                 } else {
                     scheduleBadge.innerHTML = '';
                 }
@@ -724,7 +760,7 @@ function renderTimeline(log) {
     const sorted = [...log].reverse();
 
     wrap.innerHTML = sorted.map(e => {
-        const isAi = !e.user_id && e.catatan && e.catatan.includes('[🤖 AI');
+        const isAi = !e.user_id && e.catatan && (e.catatan.includes('[🤖 AI') || e.catatan.includes('[AI') || e.catatan.includes('AI Assistant'));
         const role     = e.kode_role || (isAi ? 'ai' : 'system');
         const inisial  = isAi ? 'AI' : (e.nama_user || 'S').substring(0,2).toUpperCase();
         const namaUser = isAi ? 'AI Assistant' : (e.nama_user || 'Sistem');
@@ -841,7 +877,7 @@ async function eksekusiPublishOtomatis() {
         toast(res ? res.pesan : 'Publish otomatis gagal.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `🚀 Publish ke Instagram Sekarang (Instan)`;
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Publish ke Instagram Sekarang (Instan)`;
         }
     }
 }
@@ -878,7 +914,7 @@ async function simpanJadwalAutoPublish() {
         toast(res ? res.pesan : 'Gagal menyimpan jadwal.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `📅 Simpan Jadwal`;
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-2px;margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> Simpan Jadwal`;
         }
     }
 }
@@ -905,7 +941,7 @@ async function batalkanJadwalAutoPublish() {
         toast(res ? res.pesan : 'Gagal membatalkan jadwal.', 'error');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = `✕ Batalkan Jadwal`;
+            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-2px;margin-right:4px;"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Batalkan Jadwal`;
         }
     }
 }
@@ -1035,6 +1071,17 @@ async function simpanDesignUrl() {
         const item = allKonten.find(x => x.id == activeContent);
         if (item) {
             item.design_url = designUrl;
+            if (res.data && res.data.status) item.status = res.data.status;
+        }
+
+        if (res.data && res.data.status_changed) {
+            const detMeta = document.getElementById('detMeta');
+            const detStatus = document.getElementById('detStatus');
+            const st = res.data.status;
+            if (detMeta) detMeta.innerHTML = `<span class="cp-badge ${statusClass(st)}">${STATUS_LABEL[st]||st}</span> &nbsp; ID #${activeContent}`;
+            if (detStatus) detStatus.innerHTML = `<span class="cp-badge ${statusClass(st)}">${STATUS_LABEL[st]||st}</span>`;
+            if (typeof renderView === 'function') renderView();
+            if (typeof renderIdeList === 'function') renderIdeList();
         }
 
         if (btnBukaCanva) {
@@ -1080,7 +1127,271 @@ async function simpanDesignUrl() {
 
 
 
-// ─── Save Image URL (Google Drive Link or Public URL) ─────────────────
+// ─── Dynamic Media Box (Single Image/Video & Carousel Multi-Slide) ───────────
+
+function parseSavedMediaUrls(raw) {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    raw = String(raw).trim();
+    if (raw.startsWith('[') && raw.endsWith(']')) {
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed.map(x => String(x).trim()).filter(Boolean);
+        } catch (e) {}
+    }
+    if (raw.includes('\n')) {
+        return raw.split(/[\r\n]+/).map(x => x.trim()).filter(Boolean);
+    }
+    return raw ? [raw] : [];
+}
+
+function bukaPreviewSlide(idx) {
+    const row = document.querySelector(`.carousel-slide-row[data-index="${idx}"]`);
+    const inp = row ? row.querySelector('.carousel-slide-inp') : null;
+    let url = (inp?.value || '').trim();
+    if (!url) {
+        toast(`Link Slide ${idx + 1} belum diisi. Paste link Google Drive terlebih dahulu.`, 'error');
+        return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function renderMediaBox(k, isReadOnlyMode) {
+    const box = document.getElementById('uploadImageBox');
+    if (!box) return;
+
+    const namaJenis = (k.nama_jenis || '').toLowerCase();
+    const isCarousel = namaJenis.includes('carousel') || namaJenis.includes('slider');
+    const urls = parseSavedMediaUrls(k.image_url);
+
+    if (isCarousel) {
+        // Render Carousel multi-link UI
+        let slides = urls.length > 0 ? urls : [''];
+
+        let slidesHtml = slides.map((url, idx) => `
+            <div class="carousel-slide-row" data-index="${idx}" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+                <span class="slide-num-label" style="font-size:12px; font-weight:600; color:#4f46e5; min-width:54px;">Slide ${idx + 1}:</span>
+                <input type="text" class="cp-inp carousel-slide-inp" value="${escHtml(url)}" placeholder="Paste link Google Drive slide ${idx + 1}..." style="flex:1; font-size:12.5px; padding:7px 10px; border-radius:6px;" oninput="refreshCarouselSlideNumbers()" ${isReadOnlyMode ? 'readonly disabled' : ''}>
+                <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${idx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:4px; ${url ? 'background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600;' : 'opacity:0.45; filter:grayscale(0.7); cursor:pointer;'}" title="Preview Slide ${idx + 1}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Preview
+                </button>
+                ${(!isReadOnlyMode && slides.length > 1) ? `<button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${idx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Hapus Slide"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+            </div>
+        `).join('');
+
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px; font-size:13.5px;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+                    Link Media Carousel (Multi-Slide)
+                </div>
+                <span id="carouselCountBadge" style="font-size:11.5px; font-weight:600; background:#e0e7ff; color:#4338ca; padding:2px 10px; border-radius:12px;">
+                    ${slides.filter(Boolean).length} / ${slides.length} Slide
+                </span>
+            </div>
+            <p style="font-size:11.5px; color:var(--cp-muted); margin-bottom:10px; line-height:1.4;">
+                Konten Carousel mendukung multi-gambar/video (hingga 10 slide). Masukkan link Google Drive per slide.
+            </p>
+            <div id="carouselSlidesList">
+                ${slidesHtml}
+            </div>
+            ${!isReadOnlyMode ? `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; flex-wrap:wrap; gap:8px;">
+                <button type="button" class="cpb cpb-sec" id="btnTambahSlide" onclick="tambahSlideCarousel()" style="padding:6px 12px; font-size:12px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:5px; background:#f8fafc; border:1px solid #cbd5e1; color:#334155;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Tambah Slide
+                </button>
+                <button type="button" class="cpb cpb-pri" id="btnSimpanCarousel" onclick="simpanCarouselUrls()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:5px; margin-left:auto;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Simpan Semua Slide
+                </button>
+            </div>
+            ` : ''}
+            <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
+        `;
+    } else {
+        // Render Single Media UI (Photo / Video / Reels / Story)
+        const singleUrl = urls[0] || '';
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="font-weight:600; color:var(--cp-text); display:flex; align-items:center; gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Link Media Konten (Foto / Video)
+                </div>
+                <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; ${singleUrl ? '' : 'opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);'}" ${singleUrl ? `href="${escHtml(singleUrl)}"` : `onclick="toast('Link media belum diisi.', 'error'); return false;"`}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Preview
+                </a>
+            </div>
+            ${!isReadOnlyMode ? `
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="inImageUrl" class="cp-inp" value="${escHtml(singleUrl)}" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
+                <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
+                    Simpan Link
+                </button>
+            </div>
+            <div style="font-size:11px; color:var(--cp-muted); margin-top:6px; display:flex; align-items:flex-start; gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Pastikan file di Google Drive sudah di-share dengan akses <strong>"Anyone with the link"</strong> agar bisa diakses sistem. Link Drive akan otomatis dikonversi ke format direct-access.
+            </div>
+            ` : (singleUrl ? `<div style="font-size:13px; color:var(--cp-text); background:#f8fafc; padding:8px 12px; border-radius:8px; word-break:break-all;">${escHtml(singleUrl)}</div>` : `<div style="font-size:13px; color:var(--cp-muted); font-style:italic;">(Belum ada file media)</div>`)}
+            <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
+        `;
+    }
+}
+
+function tambahSlideCarousel() {
+    const container = document.getElementById('carouselSlidesList');
+    if (!container) return;
+    const currentRows = container.querySelectorAll('.carousel-slide-row');
+    if (currentRows.length >= 10) {
+        toast('Batas maksimal Carousel adalah 10 slide.', 'warning');
+        return;
+    }
+
+    const nextIdx = currentRows.length;
+    const newRow = document.createElement('div');
+    newRow.className = 'carousel-slide-row';
+    newRow.dataset.index = nextIdx;
+    newRow.style.cssText = 'display:flex; gap:6px; align-items:center; margin-bottom:6px;';
+    newRow.innerHTML = `
+        <span class="slide-num-label" style="font-size:12px; font-weight:600; color:#4f46e5; min-width:54px;">Slide ${nextIdx + 1}:</span>
+        <input type="text" class="cp-inp carousel-slide-inp" placeholder="Paste link Google Drive slide ${nextIdx + 1}..." style="flex:1; font-size:12.5px; padding:7px 10px; border-radius:6px;" oninput="refreshCarouselSlideNumbers()">
+        <button type="button" class="cpb cpb-sec btn-preview-slide" onclick="bukaPreviewSlide(${nextIdx})" style="padding:6px 10px; font-size:11px; text-decoration:none; white-space:nowrap; border-radius:6px; display:inline-flex; align-items:center; gap:4px; opacity:0.45; filter:grayscale(0.7); cursor:pointer;" title="Preview Slide ${nextIdx + 1}">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Preview
+        </button>
+        <button type="button" class="cpb btn-del-slide" onclick="hapusSlideCarousel(${nextIdx})" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; padding:5px 8px; font-size:11px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Hapus Slide"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    `;
+    container.appendChild(newRow);
+
+    refreshCarouselSlideNumbers();
+}
+
+function hapusSlideCarousel(idx) {
+    const container = document.getElementById('carouselSlidesList');
+    if (!container) return;
+    const rows = container.querySelectorAll('.carousel-slide-row');
+    if (rows.length <= 1) {
+        const inp = container.querySelector('.carousel-slide-inp');
+        if (inp) inp.value = '';
+        return;
+    }
+    if (rows[idx]) {
+        rows[idx].remove();
+    }
+    refreshCarouselSlideNumbers();
+}
+
+function refreshCarouselSlideNumbers() {
+    const container = document.getElementById('carouselSlidesList');
+    if (!container) return;
+    const rows = container.querySelectorAll('.carousel-slide-row');
+    const badge = document.getElementById('carouselCountBadge');
+
+    let filledCount = 0;
+    rows.forEach((row, i) => {
+        row.dataset.index = i;
+        const span = row.querySelector('.slide-num-label');
+        if (span) span.textContent = `Slide ${i + 1}:`;
+
+        const previewBtn = row.querySelector('.btn-preview-slide');
+        if (previewBtn) {
+            previewBtn.setAttribute('onclick', `bukaPreviewSlide(${i})`);
+            previewBtn.title = `Preview Slide ${i + 1}`;
+        }
+
+        const delBtn = row.querySelector('.btn-del-slide');
+        if (delBtn) {
+            delBtn.setAttribute('onclick', `hapusSlideCarousel(${i})`);
+            delBtn.style.display = rows.length > 1 ? 'inline-block' : 'none';
+        }
+
+        const inp = row.querySelector('.carousel-slide-inp');
+        const val = (inp?.value || '').trim();
+        if (val) {
+            filledCount++;
+            if (previewBtn) {
+                previewBtn.style.opacity = '1';
+                previewBtn.style.filter = 'none';
+                previewBtn.style.background = '#f0fdf4';
+                previewBtn.style.border = '1px solid #bbf7d0';
+                previewBtn.style.color = '#16a34a';
+                previewBtn.style.fontWeight = '600';
+            }
+        } else {
+            if (previewBtn) {
+                previewBtn.style.opacity = '0.45';
+                previewBtn.style.filter = 'grayscale(0.7)';
+                previewBtn.style.background = '';
+                previewBtn.style.border = '';
+                previewBtn.style.color = '';
+                previewBtn.style.fontWeight = '';
+            }
+        }
+    });
+
+    if (badge) {
+        badge.textContent = `${filledCount} / ${rows.length} Slide`;
+    }
+}
+
+async function simpanCarouselUrls() {
+    if (!activeContent) return;
+    const inps = document.querySelectorAll('.carousel-slide-inp');
+    const urls = Array.from(inps).map(inp => inp.value.trim()).filter(Boolean);
+
+    const btn = document.getElementById('btnSimpanCarousel');
+    const statusEl = document.getElementById('uploadImageStatus');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="cp-spin" style="width:12px;height:12px;border-width:2px;"></span> Menyimpan...`;
+    }
+
+    const fd = new FormData();
+    urls.forEach(u => fd.append('image_urls[]', u));
+    if (urls.length === 0) {
+        fd.append('image_url', '');
+    }
+
+    const res = await api(`/dashboard/content-plan/image-url/${activeContent}`, 'POST', fd);
+
+    if (res && res.status === 'sukses') {
+        const savedUrl = res.data.image_url || '';
+        toast(`Berhasil menyimpan ${res.data.slide_count || urls.length} slide Carousel!`, 'success');
+
+        const allKonten = window.ALL_KONTEN || [];
+        const item = allKonten.find(x => x.id == activeContent);
+        if (item) item.image_url = savedUrl;
+
+        // Refresh auto publish box
+        const autoPublishBox = document.getElementById('autoPublishBox');
+        if (autoPublishBox) {
+            autoPublishBox.style.display = savedUrl ? 'block' : 'none';
+        }
+
+        // Re-render media box
+        if (item) {
+            renderMediaBox(item, window.IS_ADMIN_MEDSOS_VIEW || false);
+        }
+
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.textContent = `✓ ${urls.length} link slide Carousel tersimpan!`;
+            setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
+        }
+    } else {
+        toast(res ? res.pesan : 'Gagal menyimpan link Carousel.', 'error');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Semua Slide`;
+        }
+    }
+}
+
+// ─── Save Single Image URL (Google Drive Link or Public URL) ─────────────────
 async function simpanImageUrl() {
     if (!activeContent) return;
     const inUrl    = document.getElementById('inImageUrl');
@@ -1101,19 +1412,32 @@ async function simpanImageUrl() {
 
     if (res && res.status === 'sukses') {
         const savedUrl = res.data.image_url || '';
-        toast('Link gambar berhasil disimpan!', 'success');
+        toast('Link media berhasil disimpan!', 'success');
 
         // Update in-memory cache
         const allKonten = window.ALL_KONTEN || [];
         const item = allKonten.find(x => x.id == activeContent);
-        if (item) item.image_url = savedUrl;
+        if (item) {
+            item.image_url = savedUrl;
+            if (res.data && res.data.status) item.status = res.data.status;
+        }
+
+        if (res.data && res.data.status_changed) {
+            const detMeta = document.getElementById('detMeta');
+            const detStatus = document.getElementById('detStatus');
+            const st = res.data.status;
+            if (detMeta) detMeta.innerHTML = `<span class="cp-badge ${statusClass(st)}">${STATUS_LABEL[st]||st}</span> &nbsp; ID #${activeContent}`;
+            if (detStatus) detStatus.innerHTML = `<span class="cp-badge ${statusClass(st)}">${STATUS_LABEL[st]||st}</span>`;
+            if (typeof renderView === 'function') renderView();
+            if (typeof renderIdeList === 'function') renderIdeList();
+        }
 
         if (statusEl) {
             const isDrive = savedUrl.includes('drive.google.com/uc');
             statusEl.style.display = 'block';
             statusEl.textContent = savedUrl
-                ? '✓ Link gambar tersimpan' + (isDrive ? ' (Drive link dikonversi ✓)' : '')
-                : '✓ Link gambar telah dihapus';
+                ? '✓ Link media tersimpan' + (isDrive ? ' (Drive link dikonversi ✓)' : '')
+                : '✓ Link media telah dihapus';
             setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 4000);
         }
 
@@ -1130,7 +1454,7 @@ async function simpanImageUrl() {
                 btnBukaGambar.href = savedUrl;
                 btnBukaGambar.target = '_blank';
                 btnBukaGambar.removeAttribute('onclick');
-                btnBukaGambar.title = 'Buka gambar di tab baru';
+                btnBukaGambar.title = 'Buka media di tab baru';
                 btnBukaGambar.style.opacity = '';
                 btnBukaGambar.style.cursor = '';
                 btnBukaGambar.style.pointerEvents = '';
@@ -1138,8 +1462,8 @@ async function simpanImageUrl() {
             } else {
                 btnBukaGambar.removeAttribute('href');
                 btnBukaGambar.removeAttribute('target');
-                btnBukaGambar.setAttribute('onclick', "toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;");
-                btnBukaGambar.title = 'Link gambar belum diisi';
+                btnBukaGambar.setAttribute('onclick', "toast('Link media belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link.', 'error'); return false;");
+                btnBukaGambar.title = 'Link media belum diisi';
                 btnBukaGambar.style.opacity = '0.45';
                 btnBukaGambar.style.cursor = 'not-allowed';
                 btnBukaGambar.style.pointerEvents = 'auto';
@@ -1147,12 +1471,118 @@ async function simpanImageUrl() {
             }
         }
     } else {
-        toast(res ? res.pesan : 'Gagal menyimpan link gambar.', 'error');
+        toast(res ? res.pesan : 'Gagal menyimpan link media.', 'error');
     }
 
     if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Simpan Link Gambar';
+        btn.textContent = 'Simpan Link';
+    }
+}
+
+// ─── Poin 11: Simpan Desain & Caption Sekaligus (Unified Batch Save & Auto-Save) ───
+async function simpanDesainDanCaption(autoSubmit = false) {
+    if (!activeContent) return;
+    const inCaptionText = document.getElementById('inCaptionText');
+    const inDesignUrl   = document.getElementById('inDesignUrl');
+    const inImageUrl    = document.getElementById('inImageUrl');
+    const btnUnified    = document.getElementById('btnSimpanUnified');
+    const statusUnified = document.getElementById('unifiedSaveStatus');
+    const btnBukaCanva  = document.getElementById('btnBukaCanva');
+    const btnBukaGambar = document.getElementById('btnBukaGambar');
+
+    const captionVal   = (inCaptionText?.value || '').trim();
+    const designUrlVal = (inDesignUrl?.value || '').trim();
+    const imageUrlVal  = (inImageUrl?.value || '').trim();
+
+    if (btnUnified) {
+        btnUnified.disabled = true;
+        btnUnified.innerHTML = `<span class="cp-spin" style="width:13px;height:13px;border-width:2px;display:inline-block;margin-right:6px;"></span> Menyimpan Desain & Caption...`;
+    }
+
+    try {
+        const fd = new FormData();
+        fd.append('caption', captionVal);
+        fd.append('design_url', designUrlVal);
+        fd.append('image_url', imageUrlVal);
+        if (autoSubmit) fd.append('auto_submit', '1');
+
+        const res = await api('/dashboard/content-plan/update-details/' + activeContent, 'POST', fd);
+
+        if (res && res.status === 'sukses') {
+            toast(res.pesan || 'Desain & Caption berhasil disimpan sekaligus!', 'success');
+
+            // Update in-memory state
+            const allKonten = window.ALL_KONTEN || [];
+            const item = allKonten.find(x => x.id == activeContent);
+            if (item) {
+                item.caption = captionVal;
+                item.design_url = designUrlVal;
+                if (res.data && res.data.image_url) item.image_url = res.data.image_url;
+                if (res.data && res.data.status) item.status = res.data.status;
+            }
+
+            // If status changed to review_design, update modal status header & badge
+            if (res.data && res.data.status_changed) {
+                const detMeta = document.getElementById('detMeta');
+                const detStatus = document.getElementById('detStatus');
+                const st = res.data.status;
+                if (detMeta) detMeta.innerHTML = `<span class="cp-badge ${statusClass(st)}">${STATUS_LABEL[st]||st}</span> &nbsp; ID #${activeContent}`;
+                if (detStatus) detStatus.innerHTML = `<span class="cp-badge ${statusClass(st)}">${STATUS_LABEL[st]||st}</span>`;
+                if (typeof renderView === 'function') renderView();
+                if (typeof renderIdeList === 'function') renderIdeList();
+            }
+
+            // Sync visual buttons
+            if (btnBukaCanva) {
+                if (designUrlVal) {
+                    btnBukaCanva.href = designUrlVal;
+                    btnBukaCanva.target = '_blank';
+                    btnBukaCanva.rel = 'noopener noreferrer';
+                    btnBukaCanva.removeAttribute('onclick');
+                    btnBukaCanva.title = 'Buka desain Canva tersimpan';
+                    btnBukaCanva.style.opacity = '';
+                    btnBukaCanva.style.cursor = '';
+                    btnBukaCanva.style.pointerEvents = '';
+                    btnBukaCanva.style.filter = '';
+                } else {
+                    btnBukaCanva.removeAttribute('href');
+                    btnBukaCanva.setAttribute('onclick', "toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan.', 'error'); return false;");
+                    btnBukaCanva.style.opacity = '0.45';
+                    btnBukaCanva.style.cursor = 'not-allowed';
+                    btnBukaCanva.style.filter = 'grayscale(0.7)';
+                }
+            }
+
+            if (btnBukaGambar) {
+                const finalImgUrl = res.data?.image_url || imageUrlVal;
+                if (finalImgUrl) {
+                    btnBukaGambar.href = finalImgUrl;
+                    btnBukaGambar.target = '_blank';
+                    btnBukaGambar.rel = 'noopener noreferrer';
+                    btnBukaGambar.removeAttribute('onclick');
+                    btnBukaGambar.title = 'Preview gambar konten';
+                    btnBukaGambar.style.opacity = '';
+                    btnBukaGambar.style.cursor = '';
+                    btnBukaGambar.style.filter = '';
+                }
+            }
+
+            if (statusUnified) {
+                statusUnified.style.display = 'inline-flex';
+                statusUnified.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Seluruh Link Desain & Caption Tersimpan Rapi!';
+                setTimeout(() => { if (statusUnified) statusUnified.style.display = 'none'; }, 4000);
+            }
+        } else {
+            toast(res ? res.pesan : 'Gagal menyimpan data.', 'error');
+        }
+    } catch (err) {
+        toast('Terjadi kesalahan koneksi saat menyimpan.', 'error');
+    } finally {
+        if (btnUnified) {
+            btnUnified.disabled = false;
+            btnUnified.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Desain & Caption Sekaligus`;
+        }
     }
 }
 
@@ -1279,7 +1709,7 @@ async function generateAiIdeas() {
 
     if (btn) {
         btn.disabled = false;
-        btn.textContent = '✨ Generate Ide Konten';
+        btn.textContent = 'Generate Ide Konten';
     }
 }
 
@@ -1338,6 +1768,15 @@ async function generateAiBrief() {
             btn.innerHTML = origHtml || `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:-1px; margin-right:3px;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Brief AI`;
         }
     }
+}
+
+// ─── Initial Render ───────────────────────────────────────
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof renderView === 'function') renderView();
+    });
+} else {
+    if (typeof renderView === 'function') renderView();
 }
 
 

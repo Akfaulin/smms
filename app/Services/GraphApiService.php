@@ -16,8 +16,8 @@ use Config\MetaApi;
  */
 class GraphApiService
 {
-    protected CURLRequest $client;    // graph.facebook.com
-    protected CURLRequest $igClient;  // graph.instagram.com
+    protected ?CURLRequest $client = null;    // graph.facebook.com
+    protected ?CURLRequest $igClient = null;  // graph.instagram.com
     protected MetaApi $config;
     protected ?MetaApiLogModel $logModel;
 
@@ -39,21 +39,23 @@ class GraphApiService
         $this->baseUrl     = 'https://graph.facebook.com/' . $this->apiVersion;
         $this->igBaseUrl   = 'https://graph.instagram.com/' . $this->apiVersion;
 
-        // Client untuk graph.facebook.com (token/auth endpoint)
-        $this->client = $client ?? \Config\Services::curlrequest([
-            'baseURI'     => $this->baseUrl . '/',
-            'timeout'     => 30,
-            'http_errors' => false,
-            'verify'      => false,
-        ]);
+        if (function_exists('curl_init') && function_exists('curl_exec')) {
+            // Client untuk graph.facebook.com (token/auth endpoint)
+            $this->client = $client ?? \Config\Services::curlrequest([
+                'baseURI'     => $this->baseUrl . '/',
+                'timeout'     => 30,
+                'http_errors' => false,
+                'verify'      => false,
+            ]);
 
-        // Client terpisah untuk graph.instagram.com (Instagram Login API publishing)
-        $this->igClient = \Config\Services::curlrequest([
-            'baseURI'     => $this->igBaseUrl . '/',
-            'timeout'     => 30,
-            'http_errors' => false,
-            'verify'      => false,
-        ]);
+            // Client terpisah untuk graph.instagram.com (Instagram Login API publishing)
+            $this->igClient = \Config\Services::curlrequest([
+                'baseURI'     => $this->igBaseUrl . '/',
+                'timeout'     => 30,
+                'http_errors' => false,
+                'verify'      => false,
+            ]);
+        }
 
         try {
             $this->logModel = new MetaApiLogModel();
@@ -271,69 +273,180 @@ class GraphApiService
     }
 
     /**
-     * Deteksi tipe media apakah Video / Reels atau Image / Gambar.
+     * Parse input media_url yang bisa berupa single URL, JSON array string, atau newline-separated URLs.
      *
-     * @param string $url URL media
-     * @param string|null $jenisHint Petunjuk jenis konten (misal: 'reels', 'video', 'foto', 'static post')
-     * @return string 'VIDEO' atau 'IMAGE'
+     * @param string $mediaUrl
+     * @return array<string>
      */
-    public function detectMediaType(string $url, ?string $jenisHint = null): string
+    public function parseMediaUrls(string $mediaUrl): array
     {
-        $jenisLower = strtolower($jenisHint ?? '');
-        if (strpos($jenisLower, 'reels') !== false || strpos($jenisLower, 'video') !== false) {
-            return 'VIDEO';
+        $mediaUrl = trim($mediaUrl);
+        if (empty($mediaUrl)) {
+            return [];
         }
 
-        // Cek ekstensi file umum dari URL
-        if (preg_match('/\.(mp4|mov|avi|webm|mkv|m4v)(\?.*)?$/i', $url)) {
-            return 'VIDEO';
-        }
-        if (preg_match('/\.(jpe?g|png|webp|gif|bmp)(\?.*)?$/i', $url)) {
-            return 'IMAGE';
-        }
-
-        // Lakukan fast HEAD/GET check (0 byte) untuk memeriksa Content-Type asli dari URL/Drive
-        try {
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_NOBODY, true);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_exec($ch);
-            $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-            curl_close($ch);
-
-            if ($contentType) {
-                $ctLower = strtolower($contentType);
-                if (str_starts_with($ctLower, 'video/')) {
-                    return 'VIDEO';
+        // Cek jika format JSON array
+        if (str_starts_with($mediaUrl, '[') && str_ends_with($mediaUrl, ']')) {
+            $decoded = json_decode($mediaUrl, true);
+            if (is_array($decoded)) {
+                $urls = [];
+                foreach ($decoded as $item) {
+                    $u = trim((string)$item);
+                    if (! empty($u)) {
+                        $urls[] = $this->convertDriveLink($u);
+                    }
                 }
-                if (str_starts_with($ctLower, 'image/')) {
-                    return 'IMAGE';
+                if (! empty($urls)) {
+                    return $urls;
                 }
             }
-        } catch (\Throwable $e) {
-            // fallback
         }
 
-        return (strpos($jenisLower, 'reels') !== false || strpos($jenisLower, 'video') !== false) ? 'VIDEO' : 'IMAGE';
+        // Cek jika pemisah baris baru atau koma
+        if (str_contains($mediaUrl, "\n") || str_contains($mediaUrl, "\r")) {
+            $lines = preg_split('/[\r\n]+/', $mediaUrl);
+            $urls  = [];
+            foreach ($lines as $line) {
+                $u = trim($line);
+                if (! empty($u)) {
+                    $urls[] = $this->convertDriveLink($u);
+                }
+            }
+            if (! empty($urls)) {
+                return $urls;
+            }
+        }
+
+        return [$this->convertDriveLink($mediaUrl)];
     }
 
     /**
-     * b) Publish media (Gambar atau Video / Reels) ke Instagram
+     * Tentukan konfigurasi payload publish Instagram berdasarkan URL media dan jenis konten.
      *
-     * @param string $mediaUrl URL publik gambar atau video (mendukung Google Drive share link)
+     * @param string $url URL media publik
+     * @param string|null $jenisHint Nama jenis konten (misal: 'Story', 'Reels / Video', 'Static Post', 'Carousel')
+     * @return array{target: 'STORIES'|'REELS'|'IMAGE'|'CAROUSEL', is_video: bool, urls: array<string>, label: string}
+     */
+    public function resolvePublishTarget(string $url, ?string $jenisHint = null): array
+    {
+        $jenisLower = strtolower($jenisHint ?? '');
+        $isStory    = (strpos($jenisLower, 'story') !== false || strpos($jenisLower, 'stories') !== false);
+        $isReels    = (strpos($jenisLower, 'reels') !== false || strpos($jenisLower, 'video') !== false);
+        $isCarousel = (strpos($jenisLower, 'carousel') !== false || strpos($jenisLower, 'slider') !== false);
+
+        $urls = $this->parseMediaUrls($url);
+        $firstUrl = $urls[0] ?? $url;
+
+        // Jika jenis Carousel atau memiliki lebih dari 1 file media
+        if ($isCarousel || count($urls) > 1) {
+            $slideCount = count($urls);
+            return [
+                'target'   => 'CAROUSEL',
+                'is_video' => false,
+                'urls'     => $urls,
+                'label'    => "Instagram Carousel ({$slideCount} Slide)",
+            ];
+        }
+
+        $isVideo = false;
+
+        // 1. Cek ekstensi file umum dari URL
+        if (preg_match('/\.(mp4|mov|avi|webm|mkv|m4v)(\?.*)?$/i', $firstUrl)) {
+            $isVideo = true;
+        } elseif (preg_match('/\.(jpe?g|png|webp|gif|bmp)(\?.*)?$/i', $firstUrl)) {
+            $isVideo = false;
+        } else {
+            // 2. Cek Content-Type via get_headers / cURL HEAD jika ekstensi tidak eksplisit (misal link Google Drive)
+            try {
+                if (function_exists('curl_init') && function_exists('curl_exec')) {
+                    $ch = @\curl_init();
+                    if ($ch) {
+                        @\curl_setopt($ch, CURLOPT_URL, $firstUrl);
+                        @\curl_setopt($ch, CURLOPT_NOBODY, true);
+                        @\curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                        @\curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+                        @\curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+                        @\curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        @\curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                        @\curl_exec($ch);
+                        $contentType = @\curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+                        @\curl_close($ch);
+
+                        if ($contentType) {
+                            $ctLower = strtolower($contentType);
+                            if (str_starts_with($ctLower, 'video/')) {
+                                $isVideo = true;
+                            } elseif (str_starts_with($ctLower, 'image/')) {
+                                $isVideo = false;
+                            }
+                        }
+                    }
+                } else {
+                    $headers = @\get_headers($firstUrl, true);
+                    $ct = $headers['Content-Type'] ?? ($headers['content-type'] ?? null);
+                    if (is_array($ct)) {
+                        $ct = end($ct);
+                    }
+                    if ($ct && is_string($ct)) {
+                        $ctLower = strtolower($ct);
+                        if (str_starts_with($ctLower, 'video/')) {
+                            $isVideo = true;
+                        } elseif (str_starts_with($ctLower, 'image/')) {
+                            $isVideo = false;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $isVideo = $isReels;
+            }
+        }
+
+        // 3. Tentukan Target Publishing Instagram
+        if ($isStory) {
+            return [
+                'target'   => 'STORIES',
+                'is_video' => $isVideo,
+                'urls'     => $urls,
+                'label'    => $isVideo ? 'Instagram Story (Video)' : 'Instagram Story (Gambar)',
+            ];
+        }
+
+        if ($isReels || $isVideo) {
+            return [
+                'target'   => 'REELS',
+                'is_video' => true,
+                'urls'     => $urls,
+                'label'    => 'Instagram Reels',
+            ];
+        }
+
+        return [
+            'target'   => 'IMAGE',
+            'is_video' => false,
+            'urls'     => $urls,
+            'label'    => 'Instagram Feed (Gambar)',
+        ];
+    }
+
+    /**
+     * Helper backward-compatible untuk deteksi tipe media 'VIDEO' atau 'IMAGE'
+     */
+    public function detectMediaType(string $url, ?string $jenisHint = null): string
+    {
+        $target = $this->resolvePublishTarget($url, $jenisHint);
+        return $target['is_video'] ? 'VIDEO' : 'IMAGE';
+    }
+
+    /**
+     * b) Publish media (Gambar, Reels Video, Instagram Story, atau Carousel Multi-Slide) ke Instagram
+     *
+     * @param string $mediaUrl URL publik gambar, video, atau JSON array URL untuk Carousel
      * @param string $caption Caption postingan
-     * @param string|null $mediaTypeHint Petunjuk tipe konten / jenis konten ('reels', 'video', 'foto', dsb)
+     * @param string|null $mediaTypeHint Petunjuk tipe konten / jenis konten ('Story', 'Reels / Video', 'Static Post', 'Carousel', dsb)
      * @return array Standard response format ['status' => 'sukses'|'gagal', 'pesan' => string, 'data' => array]
      */
     public function publishToInstagram(string $mediaUrl, string $caption = '', ?string $mediaTypeHint = null): array
     {
-        // 0. Konversi Google Drive share link ke direct-access URL
-        $mediaUrl = $this->convertDriveLink($mediaUrl);
-
         // 1. Validasi Media URL
         $urlValidation = $this->validatePublicUrl($mediaUrl);
         if ($urlValidation['status'] === 'gagal') {
@@ -365,23 +478,146 @@ class GraphApiService
 
         $token = $this->getAccessToken();
 
-        // 4. Deteksi tipe media (IMAGE vs VIDEO/REELS)
-        $detectedType = $this->detectMediaType($mediaUrl, $mediaTypeHint);
+        // 4. Tentukan target & format publish (STORIES, REELS, CAROUSEL, atau FEED IMAGE)
+        $publishConfig = $this->resolvePublishTarget($mediaUrl, $mediaTypeHint);
+        $target        = $publishConfig['target'];
+        $isVideo       = $publishConfig['is_video'];
+        $mediaLabel    = $publishConfig['label'];
+        $urls          = $publishConfig['urls'];
 
-        // 5. Step 1: Create Media Container via Instagram Login API
-        // POST https://graph.instagram.com/{version}/{ig-user-id}/media
+        // ---------------------------------------------------------------------
+        // CAROUSEL PUBLISHING (Multi-Slide Items -> Parent Container -> Publish)
+        // ---------------------------------------------------------------------
+        if ($target === 'CAROUSEL') {
+            if (empty($urls)) {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Carousel memerlukan minimal 1 URL media gambar/video.',
+                    'data'   => [],
+                ];
+            }
+
+            $childrenIds = [];
+            foreach ($urls as $idx => $itemUrl) {
+                $slideNum    = $idx + 1;
+                $isItemVideo = (preg_match('/\.(mp4|mov|avi|webm|mkv|m4v)(\?.*)?$/i', $itemUrl) || $this->detectMediaType($itemUrl) === 'VIDEO');
+
+                $childPayload = [
+                    'is_carousel_item' => 'true',
+                    'access_token'     => $token,
+                ];
+
+                if ($isItemVideo) {
+                    $childPayload['media_type'] = 'VIDEO';
+                    $childPayload['video_url']  = $itemUrl;
+                } else {
+                    $childPayload['image_url']  = $itemUrl;
+                }
+
+                $childRes = $this->requestApiWithRetry('POST', '/' . $igAccountId . '/media', $childPayload, 3, true);
+
+                if ($childRes['status'] !== 'sukses' || empty($childRes['data']['id'])) {
+                    $errMsg = $childRes['pesan'] ?? "Gagal memproses container slide ke-{$slideNum}";
+                    return [
+                        'status' => 'gagal',
+                        'pesan'  => "Meta Carousel Slide #{$slideNum} Error: " . $this->sanitizeMessage($errMsg),
+                        'data'   => $childRes['data'] ?? [],
+                    ];
+                }
+
+                $childId = $childRes['data']['id'];
+
+                if ($isItemVideo) {
+                    $this->waitForContainerReady($igAccountId, $childId, $token, 60);
+                }
+
+                $childrenIds[] = $childId;
+            }
+
+            // Step 2: Create Carousel Container (Parent)
+            $parentPayload = [
+                'media_type'   => 'CAROUSEL',
+                'children'     => implode(',', $childrenIds),
+                'caption'      => $caption,
+                'access_token' => $token,
+            ];
+
+            $parentRes = $this->requestApiWithRetry('POST', '/' . $igAccountId . '/media', $parentPayload, 3, true);
+
+            if ($parentRes['status'] !== 'sukses' || empty($parentRes['data']['id'])) {
+                $errMsg = $parentRes['pesan'] ?? 'Gagal membuat container Carousel parent.';
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Meta Carousel Parent Error: ' . $this->sanitizeMessage($errMsg),
+                    'data'   => $parentRes['data'] ?? [],
+                ];
+            }
+
+            $creationId = $parentRes['data']['id'];
+
+            // Step 3: Publish Parent Container
+            $publishUrl = '/' . $igAccountId . '/media_publish';
+            $publishPayload = [
+                'creation_id'  => $creationId,
+                'access_token' => $token,
+            ];
+
+            $publishRes = $this->requestApiWithRetry('POST', $publishUrl, $publishPayload, 3, true);
+
+            if ($publishRes['status'] !== 'sukses' || empty($publishRes['data']['id'])) {
+                $errorMessage = $publishRes['pesan'] ?? 'Gagal mempublikasikan Carousel ke Instagram.';
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => 'Meta Graph API Publish Error: ' . $this->sanitizeMessage($errorMessage),
+                    'data'   => $publishRes['data'] ?? [],
+                ];
+            }
+
+            $mediaId = $publishRes['data']['id'];
+
+            return [
+                'status' => 'sukses',
+                'pesan'  => "Konten {$mediaLabel} berhasil dipublish ke Instagram!",
+                'data'   => [
+                    'media_id'     => $mediaId,
+                    'creation_id'  => $creationId,
+                    'ig_account_id'=> $igAccountId,
+                    'target_type'  => 'CAROUSEL',
+                    'slide_count'  => count($childrenIds),
+                    'media_url'    => $mediaUrl,
+                    'caption'      => $caption,
+                    'warning'      => $warning,
+                ],
+            ];
+        }
+
+        // ---------------------------------------------------------------------
+        // SINGLE ITEM PUBLISHING (STORIES / REELS / FEED IMAGE)
+        // ---------------------------------------------------------------------
+        $singleUrl = $urls[0] ?? $this->convertDriveLink($mediaUrl);
         $containerUrl = '/' . $igAccountId . '/media';
 
-        if ($detectedType === 'VIDEO') {
+        if ($target === 'STORIES') {
+            $containerPayload = [
+                'media_type'   => 'STORIES',
+                'access_token' => $token,
+            ];
+            if ($isVideo) {
+                $containerPayload['video_url'] = $singleUrl;
+            } else {
+                $containerPayload['image_url'] = $singleUrl;
+            }
+        } elseif ($target === 'REELS') {
             $containerPayload = [
                 'media_type'   => 'REELS',
-                'video_url'    => $mediaUrl,
+                'video_url'    => $singleUrl,
                 'caption'      => $caption,
                 'access_token' => $token,
             ];
         } else {
+            // FEED IMAGE
             $containerPayload = [
-                'image_url'    => $mediaUrl,
+                'image_url'    => $singleUrl,
                 'caption'      => $caption,
                 'access_token' => $token,
             ];
@@ -400,9 +636,8 @@ class GraphApiService
 
         $creationId = $containerRes['data']['id'];
 
-        // 6. Step 2: Tunggu container media selesai diproses Meta (async processing)
-        // Meta memerlukan beberapa detik untuk fetch & process gambar / video (Reels bisa 15-60s)
-        $maxWaitTime = ($detectedType === 'VIDEO') ? 90 : 35;
+        // Tunggu container media selesai diproses Meta (async processing)
+        $maxWaitTime = $isVideo ? 90 : 35;
         $readyStatus = $this->waitForContainerReady($igAccountId, $creationId, $token, $maxWaitTime);
 
         if (! $readyStatus['ready']) {
@@ -413,8 +648,7 @@ class GraphApiService
             ];
         }
 
-        // 7. Step 3: Publish Container via Instagram Login API
-        // POST https://graph.instagram.com/{version}/{ig-user-id}/media_publish
+        // Publish Container via Instagram Login API
         $publishUrl = '/' . $igAccountId . '/media_publish';
         $publishPayload = [
             'creation_id'  => $creationId,
@@ -440,7 +674,6 @@ class GraphApiService
         }
 
         $mediaId = $publishRes['data']['id'];
-        $mediaLabel = ($detectedType === 'VIDEO') ? 'Video / Reels' : 'Gambar';
 
         return [
             'status' => 'sukses',
@@ -449,8 +682,9 @@ class GraphApiService
                 'media_id'     => $mediaId,
                 'creation_id'  => $creationId,
                 'ig_account_id'=> $igAccountId,
-                'media_type'   => $detectedType,
-                'media_url'    => $mediaUrl,
+                'target_type'  => $target,
+                'media_type'   => $isVideo ? 'VIDEO' : 'IMAGE',
+                'media_url'    => $singleUrl,
                 'caption'      => $caption,
                 'warning'      => $warning,
             ],
@@ -458,11 +692,12 @@ class GraphApiService
     }
 
     /**
-     * Validasi URL publik (mencegah localhost / private IP)
+     * Validasi URL publik (mendukung single URL maupun multi URL)
      */
     public function validatePublicUrl(string $url): array
     {
-        if (empty(trim($url))) {
+        $urls = $this->parseMediaUrls($url);
+        if (empty($urls)) {
             return [
                 'status' => 'gagal',
                 'pesan'  => 'URL media (image_url) wajib diisi dan tidak boleh kosong.',
@@ -470,40 +705,42 @@ class GraphApiService
             ];
         }
 
-        if (! filter_var($url, FILTER_VALIDATE_URL)) {
-            return [
-                'status' => 'gagal',
-                'pesan'  => 'Format URL media tidak valid: ' . htmlspecialchars($url),
-                'data'   => [],
-            ];
-        }
+        foreach ($urls as $idx => $singleUrl) {
+            $num = count($urls) > 1 ? (" (Slide #" . ($idx + 1) . ")") : "";
 
-        $parsed = parse_url($url);
-        $host   = strtolower($parsed['host'] ?? '');
+            if (! filter_var($singleUrl, FILTER_VALIDATE_URL)) {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => "Format URL media{$num} tidak valid: " . htmlspecialchars($singleUrl),
+                    'data'   => [],
+                ];
+            }
 
-        // Cek domain/host terlarang
-        if (empty($host) || $host === 'localhost' || $host === '127.0.0.1' || $host === '::1' || substr($host, -6) === '.local') {
-            return [
-                'status' => 'gagal',
-                'pesan'  => "URL media harus berupa URL publik yang dapat diakses Meta Graph API. Host localhost/IP lokal '{$host}' tidak didukung oleh Meta.",
-                'data'   => ['host' => $host, 'url' => $url],
-            ];
-        }
+            $parsed = parse_url($singleUrl);
+            $host   = strtolower($parsed['host'] ?? '');
 
-        // Cek IP Range Private (10.x.x.x, 172.16-31.x.x, 192.168.x.x)
-        $ip = gethostbyname($host);
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false && $ip !== $host) {
-            return [
-                'status' => 'gagal',
-                'pesan'  => "URL media menunjuk ke IP private/lokal ({$ip}). Meta API memerlukan URL publik yang bisa diakses internet.",
-                'data'   => ['ip' => $ip, 'host' => $host, 'url' => $url],
-            ];
+            if (empty($host) || $host === 'localhost' || $host === '127.0.0.1' || $host === '::1' || substr($host, -6) === '.local') {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => "URL media{$num} harus berupa URL publik yang dapat diakses Meta Graph API. Host localhost/IP lokal '{$host}' tidak didukung oleh Meta.",
+                    'data'   => ['host' => $host, 'url' => $singleUrl],
+                ];
+            }
+
+            $ip = gethostbyname($host);
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false && $ip !== $host) {
+                return [
+                    'status' => 'gagal',
+                    'pesan'  => "URL media{$num} menunjuk ke IP private/lokal ({$ip}). Meta API memerlukan URL publik yang bisa diakses internet.",
+                    'data'   => ['ip' => $ip, 'host' => $host, 'url' => $singleUrl],
+                ];
+            }
         }
 
         return [
             'status' => 'sukses',
             'pesan'  => 'URL publik valid.',
-            'data'   => ['host' => $host, 'url' => $url],
+            'data'   => ['count' => count($urls), 'urls' => $urls],
         ];
     }
 
@@ -606,36 +843,84 @@ class GraphApiService
         $absoluteUrl   = $activeBaseUrl . $cleanEndpoint;
 
         try {
-            // Gunakan native PHP cURL untuk menghindari CI4 CURLRequest baseURI conflict
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            $rawBody    = false;
+            $statusCode = 0;
+            $curlError  = '';
 
-            if (strtoupper($method) === 'GET') {
-                $absoluteUrl .= '?' . http_build_query($params);
-                curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
-            } else {
-                curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+            // 1. Coba native cURL jika ekstensi tersedia
+        if (function_exists('curl_init') && function_exists('curl_exec')) {
+            try {
+                $ch = @\curl_init();
+                if ($ch) {
+                    @\curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    @\curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    @\curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                    @\curl_setopt($ch, CURLOPT_TIMEOUT, 35);
+
+                    if (strtoupper($method) === 'GET') {
+                        $getUrl = $absoluteUrl . (!empty($params) ? ('?' . http_build_query($params)) : '');
+                        @\curl_setopt($ch, CURLOPT_URL, $getUrl);
+                    } else {
+                        @\curl_setopt($ch, CURLOPT_URL, $absoluteUrl);
+                        @\curl_setopt($ch, CURLOPT_POST, true);
+                        @\curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+                    }
+
+                    $rawBody    = @\curl_exec($ch);
+                    $statusCode = (int) @\curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    $curlError  = @\curl_error($ch);
+                    @\curl_close($ch);
+                }
+            } catch (\Throwable $e) {
+                $curlError = $e->getMessage();
             }
+        }
 
-            $rawBody    = curl_exec($ch);
-            $statusCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError  = curl_error($ch);
-            curl_close($ch);
+        // 2. Stream fallback jika cURL tidak aktif / dibatasi di cPanel
+        if ($rawBody === false) {
+            try {
+                $isPost    = (strtoupper($method) === 'POST');
+                $streamUrl = $absoluteUrl . ((!$isPost && !empty($params)) ? ('?' . http_build_query($params)) : '');
 
-            if ($rawBody === false) {
-                return [
-                    'status' => 'gagal',
-                    'code'   => 0,
-                    'pesan'  => 'cURL Error: ' . $curlError,
-                    'data'   => [],
+                $httpOptions = [
+                    'method'        => strtoupper($method),
+                    'timeout'       => 35,
+                    'ignore_errors' => true,
                 ];
-            }
 
-            $body = json_decode($rawBody, true) ?? [];
+                if ($isPost) {
+                    $content = http_build_query($params);
+                    $httpOptions['header']  = "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: " . strlen($content) . "\r\n";
+                    $httpOptions['content'] = $content;
+                }
+
+                $ctx = stream_context_create([
+                    'http' => $httpOptions,
+                    'ssl'  => [
+                        'verify_peer'      => false,
+                        'verify_peer_name' => false,
+                    ]
+                ]);
+
+                $rawBody = @file_get_contents($streamUrl, false, $ctx);
+                if (isset($http_response_header[0]) && preg_match('/HTTP\/\S+\s+(\d+)/', $http_response_header[0], $m)) {
+                    $statusCode = (int) $m[1];
+                }
+            } catch (\Throwable $t) {
+                $curlError = $t->getMessage();
+            }
+        }
+
+        if ($rawBody === false) {
+            return [
+                'status' => 'gagal',
+                'code'   => 0,
+                'pesan'  => 'Gagal melakukan koneksi ke Meta Graph API (cURL / Stream error): ' . ($curlError ?: 'Koneksi jaringan server terputus.'),
+                'data'   => [],
+            ];
+        }
+
+        $body = json_decode($rawBody, true) ?? [];
 
             // Sanitasi payload untuk log agar token/secret disamarkan
             $logPayload = $params;

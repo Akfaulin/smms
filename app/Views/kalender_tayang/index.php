@@ -68,22 +68,22 @@
         <span class="kt-leg-item"><span class="kt-leg-dot ditolak"></span> Ditolak</span>
     </div>
 
-    <!-- Day Names Header -->
-    <div class="kt-cal-grid" style="margin-bottom:6px;">
-        <div class="kt-cal-day-head">Senin</div>
-        <div class="kt-cal-day-head">Selasa</div>
-        <div class="kt-cal-day-head">Rabu</div>
-        <div class="kt-cal-day-head">Kamis</div>
-        <div class="kt-cal-day-head">Jumat</div>
-        <div class="kt-cal-day-head">Sabtu</div>
-        <div class="kt-cal-day-head">Minggu</div>
-    </div>
+    <!-- Day Names & Month Days Grid -->
+    <div class="kt-cal-grid-wrap">
+        <div class="kt-cal-grid" style="margin-bottom:6px;">
+            <div class="kt-cal-day-head">Senin</div>
+            <div class="kt-cal-day-head">Selasa</div>
+            <div class="kt-cal-day-head">Rabu</div>
+            <div class="kt-cal-day-head">Kamis</div>
+            <div class="kt-cal-day-head">Jumat</div>
+            <div class="kt-cal-day-head">Sabtu</div>
+            <div class="kt-cal-day-head">Minggu</div>
+        </div>
 
-    <!-- Month Days Grid Container -->
-    <div class="kt-cal-grid" id="calGridBody">
-        <!-- Rendered dynamically by JS -->
+        <div class="kt-cal-grid" id="calGridBody">
+            <!-- Rendered dynamically by JS -->
+        </div>
     </div>
-
 </div>
 
 <!-- ══════════════════════════════════════════════════════════ -->
