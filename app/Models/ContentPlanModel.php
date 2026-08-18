@@ -117,11 +117,12 @@ class ContentPlanModel extends Model
 
     /**
      * Filter konten berdasarkan bisnis_id.
-     * Digunakan di seluruh controller untuk multi-bisnis isolation.
+     * Menjamin isolasi data ketat per bisnis (tidak tercampur antar bisnis).
      */
     public function byBisnis(int $bisnisId): static
     {
-        return $this->where('content_plan.bisnis_id', $bisnisId);
+        $targetId = ($bisnisId > 0) ? $bisnisId : (int) (session('bisnis_aktif_id') ?: 1);
+        return $this->where('content_plan.bisnis_id', $targetId);
     }
 
     /**

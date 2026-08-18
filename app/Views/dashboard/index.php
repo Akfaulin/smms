@@ -105,7 +105,64 @@ $STATUS_LABEL = [
         </div>
         <div class="db-stat-sub">Total Akumulasi</div>
     </div>
+    <div class="db-stat-card" style="background:#fff1f2; border:1px solid #fecdd3; cursor:pointer;" onclick="window.location.href='/dashboard/content-plan?view=overdue'" title="Lihat konten lewat tenggat">
+        <div class="db-stat-icon" style="background:#ffe4e6; color:#e11d48;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="db-stat-info">
+            <div class="db-stat-num" style="color:#e11d48;"><?= $totalOverdue ?? 0 ?></div>
+            <div class="db-stat-lbl" style="color:#be123c; font-weight:700;">Lewat Tenggat</div>
+        </div>
+        <div class="db-stat-sub" style="color:#e11d48; font-weight:600;">Perlu Tindakan</div>
+    </div>
 </div>
+
+<?php if (!empty($overdueList)): ?>
+<!-- ── Overdue Alert Banner & Quick Action Widget ────────────── -->
+<div style="background:#fff1f2; border:1.5px solid #fda4af; border-radius:16px; padding:18px 22px; margin-bottom:24px; box-shadow:0 4px 12px rgba(225, 29, 72, 0.08);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px; height:36px; border-radius:10px; background:#e11d48; color:#fff; display:flex; align-items:center; justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+                <h3 style="font-size:15px; font-weight:800; color:#9f1239; margin:0;">Perhatian: <?= count($overdueList) ?> Konten Melewati Target Tanggal Publish!</h3>
+                <p style="font-size:12px; color:#be123c; margin:2px 0 0 0;">Konten di bawah ini telah melewati jadwal tayang namun belum dipublish. Segera tindak lanjuti atau jadwalkan ulang.</p>
+            </div>
+        </div>
+        <a href="/dashboard/content-plan?view=overdue" class="cpb" style="background:#e11d48; color:#fff; padding:7px 14px; font-size:12px; font-weight:700; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+            Buka Tab Overdue
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px;">
+        <?php foreach (array_slice($overdueList, 0, 4) as $od): ?>
+            <?php
+            $tglPub = !empty($od['tanggal_publish']) ? date('d M Y, H:i', strtotime($od['tanggal_publish'])) : '—';
+            $diffDays = !empty($od['tanggal_publish']) ? ceil((time() - strtotime($od['tanggal_publish'])) / 86400) : 1;
+            ?>
+            <div style="background:#ffffff; border:1px solid #fecdd3; border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                        <span style="background:#fee2e2; color:#b91c1c; font-size:10.5px; font-weight:700; padding:2px 6px; border-radius:6px;">Terlambat <?= $diffDays ?> Hari</span>
+                        <span style="font-size:11px; color:#64748b; font-weight:500;">Oleh: <?= esc($od['nama_pembuat'] ?: 'Tim') ?></span>
+                    </div>
+                    <div style="font-size:13px; font-weight:700; color:#0f172a; line-height:1.3; margin-bottom:4px;">
+                        <?= esc($od['judul_konten']) ?>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; border-top:1px dashed #f1f5f9; padding-top:8px; margin-top:8px;">
+                    <span style="font-size:11.5px; color:#64748b; display:flex; align-items:center; gap:4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        <?= $tglPub ?>
+                    </span>
+                    <a href="/dashboard/content-plan" style="font-size:11.5px; font-weight:700; color:#2563eb; text-decoration:none;">Reschedule ↗</a>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- ── Main Grid Layout ───────────────────────────────────────── -->
 <div class="db-grid">

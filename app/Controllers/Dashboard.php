@@ -63,7 +63,10 @@ class Dashboard extends BaseController
                 ->join('users u', 'u.id = cp.dibuat_oleh', 'left')
                 ->where('cp.bisnis_id', $bisnisId)
                 ->whereIn('cp.status', ['acc_ide', 'in_design', 'revisi'])
-                ->where('cp.dibuat_oleh', $userId)
+                ->groupStart()
+                    ->where('cp.assigned_designer', $userId)
+                    ->orWhere('cp.assigned_designer IS NULL')
+                ->groupEnd()
                 ->orderBy('cp.updated_at', 'ASC')
                 ->limit(8)
                 ->get()->getResultArray();
@@ -134,12 +137,26 @@ class Dashboard extends BaseController
             ->limit(5)
             ->get()->getResultArray();
 
+        // --- Konten Lewat Tenggat (Overdue, filter by bisnis) ---
+        $nowStr = date('Y-m-d H:i:s');
+        $overdueList = $db->table('content_plan cp')
+            ->select('cp.id, cp.judul_konten, cp.status, cp.tanggal_publish, u.nama as nama_pembuat')
+            ->join('users u', 'u.id = cp.dibuat_oleh', 'left')
+            ->where('cp.bisnis_id', $bisnisId)
+            ->where('cp.tanggal_publish IS NOT NULL')
+            ->where('cp.tanggal_publish <', $nowStr)
+            ->whereNotIn('cp.status', ['published', 'ditolak'])
+            ->orderBy('cp.tanggal_publish', 'ASC')
+            ->get()->getResultArray();
+
         return view('dashboard/index', [
             'judul'        => 'Dashboard',
             'totalAktif'   => $totalAktif,
             'totalPublish' => $totalPublish,
             'totalRevisi'  => $totalRevisi,
             'totalDitolak' => $totalDitolak,
+            'totalOverdue' => count($overdueList),
+            'overdueList'  => $overdueList,
             'antrean'      => $antrean,
             'soon'         => $soon,
             'tren'         => $tren,
