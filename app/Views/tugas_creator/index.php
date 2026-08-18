@@ -294,12 +294,7 @@ $roleNow = $kode_role ?? session('kode_role');
                 </div>
                 <textarea id="inCaptionText" class="cp-inp" rows="4" style="width:100%; font-size:13px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:85px;" placeholder="Tulis caption manual atau gunakan bantuan AI..."></textarea>
                 <div id="detCaption" style="display:none; font-size:13.5px; line-height:1.6; color:#1e293b; background:#fff; border:1px solid #e2e8f0; padding:12px; border-radius:8px;"></div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                    <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none;"></div>
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanCaption" onclick="simpanCaptionManual()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
-                        Simpan Caption
-                    </button>
-                </div>
+                <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none; margin-top:6px;"></div>
             </div>
 
             <!-- Link Desain Canva / Figma Box -->
@@ -314,11 +309,8 @@ $roleNow = $kode_role ?? session('kode_role');
                         Buka Desain ↗
                     </a>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva / Figma di sini (https://canva.com/design/...)" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanDesignUrl" onclick="simpanDesignUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                        Simpan Link
-                    </button>
+                <div>
+                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva / Figma di sini (https://canva.com/design/...)" style="width:100%; font-size:13px; padding:8px 12px; border-radius:8px;">
                 </div>
                 <div id="designUrlStatus" style="font-size:12px; color:#16a34a; margin-top:6px; display:none; font-weight:500;"></div>
             </div>
@@ -326,6 +318,26 @@ $roleNow = $kode_role ?? session('kode_role');
             <!-- Link Gambar / Carousel / Google Drive Box -->
             <div class="cp-upload-box" id="uploadImageBox" style="margin-top:16px; border:1px solid var(--cp-border); border-radius:12px; padding:16px; background:var(--cp-white);">
                 <!-- Dynamic Single or Carousel Multi-Slide rendered via renderMediaBox() -->
+            </div>
+
+            <!-- Unified Save Bar (Sekali Simpan Semua Data) -->
+            <div class="cp-save-all-bar" id="saveAllBar" style="margin-top:16px; padding:14px 16px; background:linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border:1.5px solid #e2e8f0; border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="font-weight:700; font-size:13.5px; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Simpan Semua Perubahan
+                    </div>
+                    <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
+                        Sekali klik untuk menyimpan Caption, Link Canva, dan File Media secara bersamaan.
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+                    <span id="unifiedSaveStatus" style="font-size:12px; color:#16a34a; font-weight:700; display:none;"></span>
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanUnified" onclick="simpanDesainDanCaption()" style="padding:9px 22px; font-size:13px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(37,99,235,0.25);">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Simpan Semua Data
+                    </button>
+                </div>
             </div>
 
             <!-- Transition Box -->
@@ -363,7 +375,11 @@ $roleNow = $kode_role ?? session('kode_role');
 
         <div class="cp-mf">
             <div class="cp-mf-left"></div>
-            <div class="cp-mf-right">
+            <div class="cp-mf-right" style="display:flex; align-items:center; gap:8px;">
+                <button type="button" class="cpb cpb-pri" id="btnSimpanFooter" onclick="simpanDesainDanCaption()" style="padding:8px 18px; font-size:12.5px; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:5px; background:#2563eb; color:#fff;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Simpan Semua
+                </button>
                 <button class="cpb cpb-sec" onclick="tutupModal('backDet')">Tutup</button>
             </div>
         </div>

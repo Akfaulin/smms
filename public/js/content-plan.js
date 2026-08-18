@@ -570,6 +570,14 @@ async function bukaDetail(id) {
         statusDesignUrl.textContent = '';
     }
 
+    // Unified Save Bar & Footer Button Visibility
+    const saveAllBar = document.getElementById('saveAllBar');
+    const btnSimpanUnified = document.getElementById('btnSimpanUnified');
+    const btnSimpanFooter = document.getElementById('btnSimpanFooter');
+    if (saveAllBar) saveAllBar.style.display = isReadOnlyMode ? 'none' : 'flex';
+    if (btnSimpanUnified) btnSimpanUnified.style.display = isReadOnlyMode ? 'none' : 'inline-flex';
+    if (btnSimpanFooter) btnSimpanFooter.style.display = isReadOnlyMode ? 'none' : 'inline-flex';
+
     // Transition box
     const tersedia = getTransisiTersedia(status);
     const namaJenis = (k.nama_jenis || '').toLowerCase();
@@ -1202,10 +1210,6 @@ function renderMediaBox(k, isReadOnlyMode) {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Tambah Slide
                 </button>
-                <button type="button" class="cpb cpb-pri" id="btnSimpanCarousel" onclick="simpanCarouselUrls()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; gap:5px; margin-left:auto;">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                    Simpan Semua Slide
-                </button>
             </div>
             ` : ''}
             <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
@@ -1225,11 +1229,8 @@ function renderMediaBox(k, isReadOnlyMode) {
                 </a>
             </div>
             ${!isReadOnlyMode ? `
-            <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="inImageUrl" class="cp-inp" value="${escHtml(singleUrl)}" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                    Simpan Link
-                </button>
+            <div>
+                <input type="text" id="inImageUrl" class="cp-inp" value="${escHtml(singleUrl)}" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="width:100%; font-size:13px; padding:8px 12px; border-radius:8px;">
             </div>
             <div style="font-size:11px; color:var(--cp-muted); margin-top:6px; display:flex; align-items:flex-start; gap:4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -1481,36 +1482,60 @@ async function simpanImageUrl() {
 }
 
 // ─── Poin 11: Simpan Desain & Caption Sekaligus (Unified Batch Save & Auto-Save) ───
+// ─── Poin 11: Simpan Desain, Caption & Media Sekaligus (Unified 1-Click Save) ───
 async function simpanDesainDanCaption(autoSubmit = false) {
     if (!activeContent) return;
     const inCaptionText = document.getElementById('inCaptionText');
     const inDesignUrl   = document.getElementById('inDesignUrl');
     const inImageUrl    = document.getElementById('inImageUrl');
+    const carouselInps  = document.querySelectorAll('.carousel-slide-inp');
     const btnUnified    = document.getElementById('btnSimpanUnified');
+    const btnFooter     = document.getElementById('btnSimpanFooter');
     const statusUnified = document.getElementById('unifiedSaveStatus');
     const btnBukaCanva  = document.getElementById('btnBukaCanva');
     const btnBukaGambar = document.getElementById('btnBukaGambar');
 
     const captionVal   = (inCaptionText?.value || '').trim();
     const designUrlVal = (inDesignUrl?.value || '').trim();
-    const imageUrlVal  = (inImageUrl?.value || '').trim();
+
+    let carouselUrls = [];
+    if (carouselInps && carouselInps.length > 0) {
+        carouselUrls = Array.from(carouselInps).map(inp => inp.value.trim()).filter(Boolean);
+    }
+    const singleImageUrlVal = (inImageUrl?.value || '').trim();
+
+    const origUnifiedHtml = btnUnified ? btnUnified.innerHTML : '';
+    const origFooterHtml  = btnFooter ? btnFooter.innerHTML : '';
 
     if (btnUnified) {
         btnUnified.disabled = true;
-        btnUnified.innerHTML = `<span class="cp-spin" style="width:13px;height:13px;border-width:2px;display:inline-block;margin-right:6px;"></span> Menyimpan Desain & Caption...`;
+        btnUnified.innerHTML = `<span class="cp-spin" style="width:13px;height:13px;border-width:2px;display:inline-block;margin-right:6px;"></span> Menyimpan Semua Data...`;
+    }
+    if (btnFooter) {
+        btnFooter.disabled = true;
+        btnFooter.innerHTML = `<span class="cp-spin" style="width:13px;height:13px;border-width:2px;display:inline-block;margin-right:6px;"></span> Menyimpan...`;
     }
 
     try {
         const fd = new FormData();
         fd.append('caption', captionVal);
         fd.append('design_url', designUrlVal);
-        fd.append('image_url', imageUrlVal);
+
+        if (carouselInps && carouselInps.length > 0) {
+            carouselUrls.forEach(u => fd.append('image_urls[]', u));
+            if (carouselUrls.length === 0) {
+                fd.append('image_url', '');
+            }
+        } else {
+            fd.append('image_url', singleImageUrlVal);
+        }
+
         if (autoSubmit) fd.append('auto_submit', '1');
 
         const res = await api('/dashboard/content-plan/update-details/' + activeContent, 'POST', fd);
 
         if (res && res.status === 'sukses') {
-            toast(res.pesan || 'Desain & Caption berhasil disimpan sekaligus!', 'success');
+            toast(res.pesan || 'Seluruh data konten (Caption, Desain & Media) berhasil disimpan!', 'success');
 
             // Update in-memory state
             const allKonten = window.ALL_KONTEN || [];
@@ -1518,8 +1543,16 @@ async function simpanDesainDanCaption(autoSubmit = false) {
             if (item) {
                 item.caption = captionVal;
                 item.design_url = designUrlVal;
-                if (res.data && res.data.image_url) item.image_url = res.data.image_url;
+                if (res.data && res.data.image_url !== undefined) item.image_url = res.data.image_url;
                 if (res.data && res.data.status) item.status = res.data.status;
+            }
+
+            // Sync AI caption button text
+            const btnAi = document.getElementById('btnAiCaption');
+            if (btnAi) {
+                btnAi.innerHTML = captionVal
+                    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generate Ulang AI'
+                    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;margin-right:3px"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Bantu Tulis Caption AI';
             }
 
             // If status changed to review_design, update modal status header & badge
@@ -1547,30 +1580,44 @@ async function simpanDesainDanCaption(autoSubmit = false) {
                     btnBukaCanva.style.filter = '';
                 } else {
                     btnBukaCanva.removeAttribute('href');
+                    btnBukaCanva.removeAttribute('target');
+                    btnBukaCanva.removeAttribute('rel');
                     btnBukaCanva.setAttribute('onclick', "toast('Link desain belum diisi. Paste link Canva/Figma terlebih dahulu lalu klik Simpan.', 'error'); return false;");
+                    btnBukaCanva.title = 'Link desain belum diisi';
                     btnBukaCanva.style.opacity = '0.45';
                     btnBukaCanva.style.cursor = 'not-allowed';
                     btnBukaCanva.style.filter = 'grayscale(0.7)';
                 }
             }
 
+            const finalImgUrl = res.data?.image_url || (carouselUrls.length > 0 ? JSON.stringify(carouselUrls) : singleImageUrlVal);
             if (btnBukaGambar) {
-                const finalImgUrl = res.data?.image_url || imageUrlVal;
-                if (finalImgUrl) {
+                if (finalImgUrl && !finalImgUrl.startsWith('[')) {
                     btnBukaGambar.href = finalImgUrl;
                     btnBukaGambar.target = '_blank';
                     btnBukaGambar.rel = 'noopener noreferrer';
                     btnBukaGambar.removeAttribute('onclick');
-                    btnBukaGambar.title = 'Preview gambar konten';
+                    btnBukaGambar.title = 'Preview media konten';
                     btnBukaGambar.style.opacity = '';
                     btnBukaGambar.style.cursor = '';
                     btnBukaGambar.style.filter = '';
                 }
             }
 
+            // Refresh Auto Publish Box if available
+            const autoPublishBox = document.getElementById('autoPublishBox');
+            if (autoPublishBox) {
+                autoPublishBox.style.display = finalImgUrl ? 'block' : 'none';
+            }
+
+            // Refresh Carousel badge and preview states if in Carousel mode
+            if (carouselInps && carouselInps.length > 0) {
+                refreshCarouselSlideNumbers();
+            }
+
             if (statusUnified) {
                 statusUnified.style.display = 'inline-flex';
-                statusUnified.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Seluruh Link Desain & Caption Tersimpan Rapi!';
+                statusUnified.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="3" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Seluruh Data Tersimpan!';
                 setTimeout(() => { if (statusUnified) statusUnified.style.display = 'none'; }, 4000);
             }
         } else {
@@ -1581,7 +1628,11 @@ async function simpanDesainDanCaption(autoSubmit = false) {
     } finally {
         if (btnUnified) {
             btnUnified.disabled = false;
-            btnUnified.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Desain & Caption Sekaligus`;
+            btnUnified.innerHTML = origUnifiedHtml || `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Semua Data`;
+        }
+        if (btnFooter) {
+            btnFooter.disabled = false;
+            btnFooter.innerHTML = origFooterHtml || `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px; margin-right:4px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Simpan Semua`;
         }
     }
 }

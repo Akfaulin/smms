@@ -882,6 +882,7 @@ class ContentPlan extends BaseController
         $postCaption   = $this->request->getPost('caption') ?? $this->request->getVar('caption');
         $postDesignUrl = $this->request->getPost('design_url') ?? $this->request->getVar('design_url');
         $postImageUrl  = $this->request->getPost('image_url') ?? $this->request->getVar('image_url');
+        $postImageUrls = $this->request->getPost('image_urls') ?? $this->request->getVar('image_urls');
         $autoSubmit    = (bool) ($this->request->getPost('auto_submit') ?? $this->request->getVar('auto_submit'));
 
         $updateData = ['updated_at' => date('Y-m-d H:i:s')];
@@ -898,19 +899,44 @@ class ContentPlan extends BaseController
             $updateData['design_url'] = $dUrl ?: null;
         }
 
-        if ($postImageUrl !== null) {
-            $iUrl = trim((string)$postImageUrl);
-            if (! empty($iUrl)) {
-                if (str_contains($iUrl, 'drive.google.com')) {
-                    $graphService = new \App\Services\GraphApiService();
-                    $directUrl = $graphService->convertDriveLink($iUrl);
-                    $updateData['image_url'] = $directUrl;
-                } else {
-                    $updateData['image_url'] = $iUrl;
-                }
-            } else {
-                $updateData['image_url'] = null;
+        $graphService = new \App\Services\GraphApiService();
+        $urlsToProcess = [];
+
+        if (is_array($postImageUrls)) {
+            $urlsToProcess = $postImageUrls;
+        } elseif ($postImageUrl !== null) {
+            $urlsToProcess = $graphService->parseMediaUrls((string)$postImageUrl);
+        } else {
+            $json = str_contains(strtolower($this->request->getHeaderLine('Content-Type')), 'json') ? $this->request->getJSON(true) : [];
+            if (isset($json['image_urls']) && is_array($json['image_urls'])) {
+                $urlsToProcess = $json['image_urls'];
+            } elseif (isset($json['image_url'])) {
+                $urlsToProcess = $graphService->parseMediaUrls((string)$json['image_url']);
             }
+        }
+
+        if (!empty($urlsToProcess) || $postImageUrl !== null || $postImageUrls !== null) {
+            $cleanedUrls = [];
+            foreach ($urlsToProcess as $u) {
+                $strUrl = trim((string)$u);
+                if (empty($strUrl)) {
+                    continue;
+                }
+
+                if (! filter_var($strUrl, FILTER_VALIDATE_URL)) {
+                    return $this->jsonGagal('Format URL link media tidak valid: ' . htmlspecialchars($strUrl) . ' (harus diawali http:// atau https://).', 422);
+                }
+
+                $cleanedUrls[] = $graphService->convertDriveLink($strUrl);
+            }
+
+            $finalValue = null;
+            if (count($cleanedUrls) > 1) {
+                $finalValue = json_encode(array_values($cleanedUrls));
+            } elseif (count($cleanedUrls) === 1) {
+                $finalValue = $cleanedUrls[0];
+            }
+            $updateData['image_url'] = $finalValue;
         }
 
         // Poin 12: Jika creator melampirkan link desain/gambar dan status masih 'acc_ide', 'in_design', atau 'revisi' -> otomatis ke 'review_design'
@@ -929,7 +955,7 @@ class ContentPlan extends BaseController
         $this->model->protect(false)->update($id, $updateData);
         $this->model->protect(true);
 
-        return $this->jsonSukses('Desain & Caption berhasil disimpan' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
+        return $this->jsonSukses('Seluruh data konten berhasil disimpan' . ($statusChanged ? ' & status otomatis beralih ke Review Desain.' : '.'), [
             'caption'        => $updateData['caption'] ?? $konten['caption'],
             'design_url'     => $updateData['design_url'] ?? $konten['design_url'],
             'image_url'      => $updateData['image_url'] ?? $konten['image_url'],

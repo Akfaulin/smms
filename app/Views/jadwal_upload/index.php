@@ -308,12 +308,7 @@ $roleNow = $kode_role ?? session('kode_role');
                 </div>
                 <div>
                     <textarea id="inCaptionText" class="cp-inp" rows="4" placeholder="Tulis caption manual..." style="width:100%; font-size:13.5px; padding:10px 12px; border-radius:8px; line-height:1.5; resize:vertical; min-height:90px;"></textarea>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                        <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none;"></div>
-                        <button type="button" class="cpb cpb-pri" id="btnSimpanCaption" onclick="simpanCaptionManual()" style="padding:7px 16px; font-size:12px; font-weight:600; border-radius:8px; margin-left:auto;">
-                            Simpan Caption
-                        </button>
-                    </div>
+                    <div id="captionStatus" style="font-size:12px; color:#16a34a; font-weight:500; display:none; margin-top:6px;"></div>
                 </div>
                 <div id="detCaption" style="font-size:14px; color:var(--cp-muted); white-space:pre-wrap; display:none;">(Belum ada caption)</div>
             </div>
@@ -330,11 +325,8 @@ $roleNow = $kode_role ?? session('kode_role');
                         Buka Canva ↗
                     </a>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva/Figma di sini (https://canva.com/design/...)" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanDesignUrl" onclick="simpanDesignUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                        Simpan Link
-                    </button>
+                <div>
+                    <input type="url" id="inDesignUrl" class="cp-inp" placeholder="Paste link Canva/Figma di sini (https://canva.com/design/...)" style="width:100%; font-size:13px; padding:8px 12px; border-radius:8px;">
                 </div>
                 <div id="designUrlStatus" style="font-size:12px; color:#16a34a; margin-top:6px; display:none; font-weight:500;"></div>
             </div>
@@ -346,22 +338,39 @@ $roleNow = $kode_role ?? session('kode_role');
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                         Link Gambar Konten
                     </div>
-                    <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link gambar belum diisi" onclick="toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Simpan Link Gambar.', 'error'); return false;">
+                    <a id="btnBukaGambar" class="cpb cpb-sec" target="_blank" rel="noopener noreferrer" style="padding:6px 12px; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px; background:#f0fdf4; border:1px solid #bbf7d0; color:#16a34a; font-weight:600; border-radius:8px; opacity:0.45; cursor:not-allowed; filter:grayscale(0.7);" title="Link gambar belum diisi" onclick="toast('Link gambar belum diisi. Paste link Google Drive terlebih dahulu lalu klik Preview.', 'error'); return false;">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                         Preview ↗
                     </a>
                 </div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <input type="text" id="inImageUrl" class="cp-inp" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="flex:1; font-size:13px; padding:8px 12px; border-radius:8px;">
-                    <button type="button" class="cpb cpb-pri" id="btnSimpanImageUrl" onclick="simpanImageUrl()" style="padding:8px 16px; font-size:12px; font-weight:600; white-space:nowrap; border-radius:8px;">
-                        Simpan Link Gambar
-                    </button>
+                <div>
+                    <input type="text" id="inImageUrl" class="cp-inp" placeholder="Paste link Google Drive (https://drive.google.com/file/d/.../view) atau URL publik lainnya" style="width:100%; font-size:13px; padding:8px 12px; border-radius:8px;">
                 </div>
                 <div style="font-size:11px; color:var(--cp-muted); margin-top:6px; display:flex; align-items:flex-start; gap:4px;">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     Pastikan file di Google Drive sudah di-share dengan akses <strong>"Anyone with the link"</strong> agar bisa diakses sistem. Link Drive akan otomatis dikonversi ke format direct-access.
                 </div>
                 <div id="uploadImageStatus" style="font-size:12px; color:#16a34a; margin-top:8px; display:none; font-weight:500;"></div>
+            </div>
+
+            <!-- Unified Save Bar (Sekali Simpan Semua Data) -->
+            <div class="cp-save-all-bar" id="saveAllBar" style="margin-top:16px; padding:14px 16px; background:linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border:1.5px solid #e2e8f0; border-radius:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="font-weight:700; font-size:13.5px; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Simpan Semua Perubahan
+                    </div>
+                    <div style="font-size:11.5px; color:#64748b; margin-top:2px;">
+                        Simpan Caption, Link Canva, dan File Media secara bersamaan.
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+                    <span id="unifiedSaveStatus" style="font-size:12px; color:#16a34a; font-weight:700; display:none;"></span>
+                    <button type="button" class="cpb cpb-pri" id="btnSimpanUnified" onclick="simpanDesainDanCaption()" style="padding:9px 22px; font-size:13px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:#fff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 8px rgba(37,99,235,0.25);">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        Simpan Semua Data
+                    </button>
+                </div>
             </div>
 
             <!-- ─── JADWAL AUTO-PUBLISH BOX (BACKGROUND PUBLISHING) ─────────── -->
