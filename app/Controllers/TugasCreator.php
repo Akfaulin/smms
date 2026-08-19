@@ -159,6 +159,7 @@ class TugasCreator extends BaseController
             'jenisKonten'   => $jenisKonten,
             'contentTypes'  => $contentTypes,
             'kode_role'     => $role,
+            'roleNow'       => $role,  // Alias untuk view (window.ROLE)
         ]);
     }
 }

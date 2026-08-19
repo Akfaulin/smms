@@ -207,10 +207,10 @@ class JadwalUpload extends BaseController
                 try {
                     $buktiModel = new \App\Models\BuktiUploadModel();
                     $buktiModel->insert([
-                        'content_id'    => $id,
-                        'url_postingan' => 'https://www.instagram.com/p/' . $mediaId,
-                        'catatan'       => 'Media ID Meta Instagram: ' . $mediaId,
-                        'uploaded_at'   => date('Y-m-d H:i:s'),
+                        'content_id'     => $id,
+                        'link_postingan' => 'https://www.instagram.com/p/' . $mediaId,
+                        'uploaded_by'    => $userId > 0 ? $userId : 1,
+                        'uploaded_at'    => date('Y-m-d H:i:s'),
                     ]);
                 } catch (\Throwable $t) {
                     log_message('error', 'Gagal simpan bukti upload: ' . $t->getMessage());
