@@ -25,17 +25,72 @@ class GraphApiService
     protected string $appSecret;
     protected string $apiVersion;
     protected string $igUsername;
+    protected string $igAccountId = '';
     protected string $baseUrl;    // graph.facebook.com base
     protected string $igBaseUrl;  // graph.instagram.com base
     protected ?string $cachedToken = null;
 
-    public function __construct(?CURLRequest $client = null)
+    public function __construct(mixed $bisnisIdOrClient = null, ?CURLRequest $client = null)
     {
-        $this->config     = config('MetaApi');
-        $this->appId      = $this->config->appId;
+        $bisnisId = null;
+        if (is_int($bisnisIdOrClient)) {
+            $bisnisId = $bisnisIdOrClient;
+        } elseif ($bisnisIdOrClient instanceof CURLRequest) {
+            $client = $bisnisIdOrClient;
+        }
+
+        // Fallback ke session jika bisnisId null
+        if ($bisnisId === null && session()->has('bisnis_aktif_id')) {
+            $bisnisId = (int) session('bisnis_aktif_id');
+        }
+
+        $this->config      = config('MetaApi');
+        $this->appId       = $this->config->appId;
         $this->appSecret   = $this->config->appSecret;
         $this->apiVersion  = $this->config->apiVersion;
         $this->igUsername  = $this->config->igUsername;
+        $this->igAccountId = $this->config->igAccountId;
+        $this->cachedToken = $this->config->userAccessToken;
+
+        // Load kredensial per bisnis jika dispesifikasi
+        if ($bisnisId !== null && $bisnisId > 0) {
+            $db = \Config\Database::connect();
+            $bisnis = $db->table('bisnis')->where('id', $bisnisId)->get()->getRowArray();
+            if ($bisnis) {
+                if (! empty($bisnis['meta_app_id'])) {
+                    $this->appId = trim($bisnis['meta_app_id']);
+                }
+
+                $encrypter = \Config\Services::encrypter();
+
+                if (! empty($bisnis['meta_app_secret'])) {
+                    try {
+                        $decryptedSecret = $encrypter->decrypt(hex2bin($bisnis['meta_app_secret']));
+                        $this->appSecret = trim($decryptedSecret);
+                    } catch (\Throwable $e) {
+                        log_message('error', '[GraphApiService] Decryption of meta_app_secret failed for bisnis ID ' . $bisnisId . ': ' . $e->getMessage());
+                    }
+                }
+
+                if (! empty($bisnis['meta_access_token'])) {
+                    try {
+                        $decryptedToken = $encrypter->decrypt(hex2bin($bisnis['meta_access_token']));
+                        $this->cachedToken = trim($decryptedToken);
+                    } catch (\Throwable $e) {
+                        log_message('error', '[GraphApiService] Decryption of meta_access_token failed for bisnis ID ' . $bisnisId . ': ' . $e->getMessage());
+                    }
+                }
+
+                if (! empty($bisnis['meta_ig_account_id'])) {
+                    $this->igAccountId = trim($bisnis['meta_ig_account_id']);
+                }
+
+                if (! empty($bisnis['meta_ig_username'])) {
+                    $this->igUsername = trim($bisnis['meta_ig_username']);
+                }
+            }
+        }
+
         $this->baseUrl     = 'https://graph.facebook.com/' . $this->apiVersion;
         $this->igBaseUrl   = 'https://graph.instagram.com/' . $this->apiVersion;
 
@@ -190,9 +245,9 @@ class GraphApiService
      */
     public function getInstagramBusinessAccountId(?string $username = null): ?string
     {
-        // Shortcut: jika ID sudah dikonfigurasi langsung di .env/Config, skip API lookup
-        if (! empty($this->config->igAccountId)) {
-            return $this->config->igAccountId;
+        // Shortcut: jika ID sudah dikonfigurasi langsung, skip API lookup
+        if (! empty($this->igAccountId)) {
+            return $this->igAccountId;
         }
 
         $targetUsername = strtolower($username ?? $this->igUsername);

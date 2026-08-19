@@ -157,7 +157,8 @@ class AutoPublishService
 
         // Panggil GraphApiService untuk publish ke Meta Instagram (mendukung Foto & Video/Reels)
         try {
-            $apiResult = $this->graphApiService->publishToInstagram($imageUrl, $caption, $namaJenis);
+            $serviceToUse = new GraphApiService($bisnisId);
+            $apiResult = $serviceToUse->publishToInstagram($imageUrl, $caption, $namaJenis);
         } catch (\Throwable $e) {
             $apiResult = [
                 'status' => 'gagal',

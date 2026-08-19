@@ -11,7 +11,7 @@ class AiService
     protected $apiKey;
     protected $logModel;
 
-    public function __construct()
+    public function __construct(?int $bisnisId = null)
     {
         if (function_exists('curl_init') && function_exists('curl_exec')) {
             $this->client = \Config\Services::curlrequest([
@@ -20,8 +20,29 @@ class AiService
             ]);
         }
 
-        // Ambil API key dari env / getenv / $_ENV
+        // 1. Default dari env
         $this->apiKey = trim(env('GEMINI_API_KEY') ?: (getenv('GEMINI_API_KEY') ?: ($_ENV['GEMINI_API_KEY'] ?? '')));
+
+        // 2. Resolve bisnisId dari session jika null
+        if ($bisnisId === null && session()->has('bisnis_aktif_id')) {
+            $bisnisId = (int) session('bisnis_aktif_id');
+        }
+
+        // 3. Load kredensial per bisnis jika dispesifikasi
+        if ($bisnisId !== null && $bisnisId > 0) {
+            $db = \Config\Database::connect();
+            $bisnis = $db->table('bisnis')->where('id', $bisnisId)->get()->getRowArray();
+            if ($bisnis && !empty($bisnis['gemini_api_key'])) {
+                try {
+                    $encrypter = \Config\Services::encrypter();
+                    $decrypted = $encrypter->decrypt(hex2bin($bisnis['gemini_api_key']));
+                    $this->apiKey = trim($decrypted);
+                } catch (\Throwable $e) {
+                    log_message('error', '[AiService] Decryption of gemini_api_key failed for bisnis ID ' . $bisnisId . ': ' . $e->getMessage());
+                }
+            }
+        }
+
         $this->logModel = new AiGenerationLogModel();
     }
 

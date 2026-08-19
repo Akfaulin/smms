@@ -21,6 +21,24 @@ class TestMetaGraph extends BaseCommand
         $service = new GraphApiService();
 
         // ---------------------------------------------------------------------
+        // TEST 0: Encryption & Decryption
+        // ---------------------------------------------------------------------
+        CLI::write("[TEST 0] Testing Encryption and Decryption...", 'white');
+        try {
+            $encrypter = \Config\Services::encrypter();
+            $originalText = "SuperSecretMetaAppSecret123!";
+            $encryptedText = bin2hex($encrypter->encrypt($originalText));
+            $decryptedText = $encrypter->decrypt(hex2bin($encryptedText));
+            if ($originalText === $decryptedText) {
+                CLI::write(" -> [PASSED] Encryption and decryption verified successfully.\n", 'green');
+            } else {
+                CLI::write(" -> [FAILED] Decrypted text mismatch.\n", 'red');
+            }
+        } catch (\Throwable $e) {
+            CLI::write(" -> [FAILED] Encryption failed: " . $e->getMessage() . "\n", 'red');
+        }
+
+        // ---------------------------------------------------------------------
         // TEST 1: Access Token Generation
         // ---------------------------------------------------------------------
         CLI::write("[TEST 1] Testing getAccessToken()...", 'white');

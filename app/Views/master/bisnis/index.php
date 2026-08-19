@@ -61,12 +61,18 @@
 
             <div class="mb-card-actions">
                 <button class="mb-btn mb-btn-outline" onclick='openEditModal(<?= json_encode([
-                    "id"          => $b["id"],
-                    "nama_bisnis" => $b["nama_bisnis"],
-                    "deskripsi"   => $b["deskripsi"],
-                    "warna"       => $b["warna"],
-                    "logo_url"    => $b["logo_url"],
-                    "status"      => $b["status"],
+                    "id"                 => $b["id"],
+                    "nama_bisnis"        => $b["nama_bisnis"],
+                    "deskripsi"          => $b["deskripsi"],
+                    "warna"              => $b["warna"],
+                    "logo_url"           => $b["logo_url"],
+                    "status"             => $b["status"],
+                    "meta_app_id"        => $b["meta_app_id"] ?? "",
+                    "meta_app_secret"    => $b["meta_app_secret_decrypted"] ?? "",
+                    "meta_access_token"  => $b["meta_access_token_decrypted"] ?? "",
+                    "meta_ig_account_id" => $b["meta_ig_account_id"] ?? "",
+                    "meta_ig_username"   => $b["meta_ig_username"] ?? "",
+                    "gemini_api_key"     => $b["gemini_api_key_decrypted"] ?? "",
                 ]) ?>)'>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -129,6 +135,64 @@
                     <label>URL Logo / Ikon <span style="opacity:.5;font-size:.75rem;">(opsional)</span></label>
                     <input type="url" name="logo_url" class="mb-input" placeholder="https://...">
                 </div>
+                
+                <!-- Meta API Credentials -->
+                <div class="mb-section-title" style="margin-top: 20px; font-weight: 800; font-size: 0.85rem; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-bottom: 12px;">
+                    Kredensial Meta API (Instagram Publishing)
+                </div>
+                <div class="mb-form-group">
+                    <label>Meta App ID</label>
+                    <input type="text" name="meta_app_id" class="mb-input" placeholder="Contoh: 2078669586190235">
+                </div>
+                <div class="mb-form-group">
+                    <label>Meta App Secret</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="meta_app_secret" id="addMetaAppSecret" class="mb-input" style="padding-right: 40px;" placeholder="App Secret (Akan dienkripsi)">
+                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('addMetaAppSecret')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-form-group">
+                    <label>Meta User Access Token</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="meta_access_token" id="addMetaAccessToken" class="mb-input" style="padding-right: 40px;" placeholder="Access Token (Akan dienkripsi)">
+                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('addMetaAccessToken')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-form-group">
+                    <label>Instagram Account ID</label>
+                    <input type="text" name="meta_ig_account_id" class="mb-input" placeholder="Contoh: 17841405822304958">
+                </div>
+                <div class="mb-form-group">
+                    <label>Instagram Username</label>
+                    <input type="text" name="meta_ig_username" class="mb-input" placeholder="Contoh: instagram_bisnis_anda">
+                </div>
+                
+                <!-- Gemini AI Credentials -->
+                <div class="mb-section-title" style="margin-top: 20px; font-weight: 800; font-size: 0.85rem; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-bottom: 12px;">
+                    Kredensial Gemini AI
+                </div>
+                <div class="mb-form-group">
+                    <label>Gemini API Key</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="gemini_api_key" id="addGeminiApiKey" class="mb-input" style="padding-right: 40px;" placeholder="Gemini API Key (Akan dienkripsi)">
+                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('addGeminiApiKey')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="mb-modal-footer">
                 <button type="button" class="mb-btn mb-btn-outline" onclick="closeModal('addModal')">Batal</button>
@@ -173,6 +237,64 @@
                 <div class="mb-form-group">
                     <label>URL Logo / Ikon <span style="opacity:.5;font-size:.75rem;">(opsional)</span></label>
                     <input type="url" name="logo_url" id="editLogoUrl" class="mb-input" placeholder="https://...">
+                </div>
+                
+                <!-- Meta API Credentials -->
+                <div class="mb-section-title" style="margin-top: 20px; font-weight: 800; font-size: 0.85rem; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-bottom: 12px;">
+                    Kredensial Meta API (Instagram Publishing)
+                </div>
+                <div class="mb-form-group">
+                    <label>Meta App ID</label>
+                    <input type="text" name="meta_app_id" id="editMetaAppId" class="mb-input" placeholder="Contoh: 2078669586190235">
+                </div>
+                <div class="mb-form-group">
+                    <label>Meta App Secret</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="meta_app_secret" id="editMetaAppSecret" class="mb-input" style="padding-right: 40px;" placeholder="App Secret (Akan dienkripsi)">
+                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('editMetaAppSecret')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-form-group">
+                    <label>Meta User Access Token</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="meta_access_token" id="editMetaAccessToken" class="mb-input" style="padding-right: 40px;" placeholder="Access Token (Akan dienkripsi)">
+                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('editMetaAccessToken')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-form-group">
+                    <label>Instagram Account ID</label>
+                    <input type="text" name="meta_ig_account_id" id="editMetaIgAccountId" class="mb-input" placeholder="Contoh: 17841405822304958">
+                </div>
+                <div class="mb-form-group">
+                    <label>Instagram Username</label>
+                    <input type="text" name="meta_ig_username" id="editMetaIgUsername" class="mb-input" placeholder="Contoh: instagram_bisnis_anda">
+                </div>
+                
+                <!-- Gemini AI Credentials -->
+                <div class="mb-section-title" style="margin-top: 20px; font-weight: 800; font-size: 0.85rem; color: #475569; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-bottom: 12px;">
+                    Kredensial Gemini AI
+                </div>
+                <div class="mb-form-group">
+                    <label>Gemini API Key</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" name="gemini_api_key" id="editGeminiApiKey" class="mb-input" style="padding-right: 40px;" placeholder="Gemini API Key (Akan dienkripsi)">
+                        <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('editGeminiApiKey')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #64748b; padding: 5px; display: flex; align-items: center; justify-content: center;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="eye-icon">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="mb-form-group">
                     <label>Status</label>
@@ -555,9 +677,19 @@
     border-radius: 20px;
     width: 100%;
     max-width: 480px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     animation: slideUp 0.2s ease;
     box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+}
+
+.mb-modal form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
 }
 
 @keyframes slideUp {
@@ -602,6 +734,8 @@
 
 .mb-modal-body {
     padding: 20px 22px;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .mb-modal-footer {
@@ -634,7 +768,25 @@ function openEditModal(data) {
     document.getElementById('editColorText').value = data.warna;
     document.getElementById('editLogoUrl').value = data.logo_url ?? '';
     document.getElementById('editStatus').value = data.status;
+    
+    // Bind Meta Fields
+    document.getElementById('editMetaAppId').value = data.meta_app_id ?? '';
+    document.getElementById('editMetaAppSecret').value = data.meta_app_secret ?? '';
+    document.getElementById('editMetaAccessToken').value = data.meta_access_token ?? '';
+    document.getElementById('editMetaIgAccountId').value = data.meta_ig_account_id ?? '';
+    document.getElementById('editMetaIgUsername').value = data.meta_ig_username ?? '';
+    document.getElementById('editGeminiApiKey').value = data.gemini_api_key ?? '';
+    
     document.getElementById('editModal').classList.add('open');
+}
+
+function togglePasswordVisibility(fieldId) {
+    const input = document.getElementById(fieldId);
+    if (input.type === 'password') {
+        input.type = 'text';
+    } else {
+        input.type = 'password';
+    }
 }
 
 function closeModal(id) {

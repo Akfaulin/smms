@@ -92,6 +92,38 @@ class Bisnis extends BaseController
 
         $semua = $this->bisnisModel->orderBy('urutan', 'ASC')->findAll();
 
+        $encrypter = \Config\Services::encrypter();
+        foreach ($semua as &$b) {
+            $b['meta_app_secret_decrypted'] = '';
+            $b['meta_access_token_decrypted'] = '';
+            $b['gemini_api_key_decrypted'] = '';
+            if (!empty($b['meta_app_secret'])) {
+                try {
+                    $b['meta_app_secret_decrypted'] = $encrypter->decrypt(hex2bin($b['meta_app_secret']));
+                } catch (\Throwable $e) {
+                    $b['meta_app_secret_decrypted'] = '';
+                    log_message('error', '[Bisnis Controller] Gagal dekripsi meta_app_secret untuk Bisnis ID ' . $b['id'] . ': ' . $e->getMessage());
+                }
+            }
+            if (!empty($b['meta_access_token'])) {
+                try {
+                    $b['meta_access_token_decrypted'] = $encrypter->decrypt(hex2bin($b['meta_access_token']));
+                } catch (\Throwable $e) {
+                    $b['meta_access_token_decrypted'] = '';
+                    log_message('error', '[Bisnis Controller] Gagal dekripsi meta_access_token untuk Bisnis ID ' . $b['id'] . ': ' . $e->getMessage());
+                }
+            }
+            if (!empty($b['gemini_api_key'])) {
+                try {
+                    $b['gemini_api_key_decrypted'] = $encrypter->decrypt(hex2bin($b['gemini_api_key']));
+                } catch (\Throwable $e) {
+                    $b['gemini_api_key_decrypted'] = '';
+                    log_message('error', '[Bisnis Controller] Gagal dekripsi gemini_api_key untuk Bisnis ID ' . $b['id'] . ': ' . $e->getMessage());
+                }
+            }
+        }
+        unset($b);
+
         return view('master/bisnis/index', [
             'judul'        => 'Manajemen Bisnis',
             'semua_bisnis' => $semua,
@@ -116,13 +148,28 @@ class Bisnis extends BaseController
             return $this->jsonGagal('Maksimal 10 bisnis yang dapat dikelola sekaligus.', 422);
         }
 
+        $encrypter = \Config\Services::encrypter();
+        $secretPlain = trim($this->request->getPost('meta_app_secret') ?? '');
+        $tokenPlain  = trim($this->request->getPost('meta_access_token') ?? '');
+        $geminiPlain = trim($this->request->getPost('gemini_api_key') ?? '');
+
+        $secretEnc = !empty($secretPlain) ? bin2hex($encrypter->encrypt($secretPlain)) : null;
+        $tokenEnc  = !empty($tokenPlain) ? bin2hex($encrypter->encrypt($tokenPlain)) : null;
+        $geminiEnc = !empty($geminiPlain) ? bin2hex($encrypter->encrypt($geminiPlain)) : null;
+
         $data = [
-            'nama_bisnis' => trim($this->request->getPost('nama_bisnis') ?? ''),
-            'deskripsi'   => trim($this->request->getPost('deskripsi') ?? ''),
-            'warna'       => $this->request->getPost('warna') ?: '#6C5CE7',
-            'logo_url'    => $this->request->getPost('logo_url') ?: null,
-            'status'      => 'aktif',
-            'urutan'      => $total + 1,
+            'nama_bisnis'        => trim($this->request->getPost('nama_bisnis') ?? ''),
+            'deskripsi'          => trim($this->request->getPost('deskripsi') ?? ''),
+            'warna'              => $this->request->getPost('warna') ?: '#6C5CE7',
+            'logo_url'           => $this->request->getPost('logo_url') ?: null,
+            'status'             => 'aktif',
+            'urutan'             => $total + 1,
+            'meta_app_id'        => trim($this->request->getPost('meta_app_id') ?? '') ?: null,
+            'meta_app_secret'    => $secretEnc,
+            'meta_access_token'  => $tokenEnc,
+            'meta_ig_account_id' => trim($this->request->getPost('meta_ig_account_id') ?? '') ?: null,
+            'meta_ig_username'   => trim($this->request->getPost('meta_ig_username') ?? '') ?: null,
+            'gemini_api_key'     => $geminiEnc,
         ];
 
         if (! $this->bisnisModel->insert($data)) {
@@ -155,12 +202,27 @@ class Bisnis extends BaseController
             return $this->jsonGagal('Bisnis tidak ditemukan.', 404);
         }
 
+        $encrypter = \Config\Services::encrypter();
+        $secretPlain = trim($this->request->getPost('meta_app_secret') ?? '');
+        $tokenPlain  = trim($this->request->getPost('meta_access_token') ?? '');
+        $geminiPlain = trim($this->request->getPost('gemini_api_key') ?? '');
+
+        $secretEnc = !empty($secretPlain) ? bin2hex($encrypter->encrypt($secretPlain)) : null;
+        $tokenEnc  = !empty($tokenPlain) ? bin2hex($encrypter->encrypt($tokenPlain)) : null;
+        $geminiEnc = !empty($geminiPlain) ? bin2hex($encrypter->encrypt($geminiPlain)) : null;
+
         $data = [
-            'nama_bisnis' => trim($this->request->getPost('nama_bisnis') ?? $bisnis['nama_bisnis']),
-            'deskripsi'   => trim($this->request->getPost('deskripsi') ?? ''),
-            'warna'       => $this->request->getPost('warna') ?: $bisnis['warna'],
-            'logo_url'    => $this->request->getPost('logo_url') ?: null,
-            'status'      => $this->request->getPost('status') ?: $bisnis['status'],
+            'nama_bisnis'        => trim($this->request->getPost('nama_bisnis') ?? $bisnis['nama_bisnis']),
+            'deskripsi'          => trim($this->request->getPost('deskripsi') ?? ''),
+            'warna'              => $this->request->getPost('warna') ?: $bisnis['warna'],
+            'logo_url'           => $this->request->getPost('logo_url') ?: null,
+            'status'             => $this->request->getPost('status') ?: $bisnis['status'],
+            'meta_app_id'        => trim($this->request->getPost('meta_app_id') ?? '') ?: null,
+            'meta_app_secret'    => $secretEnc,
+            'meta_access_token'  => $tokenEnc,
+            'meta_ig_account_id' => trim($this->request->getPost('meta_ig_account_id') ?? '') ?: null,
+            'meta_ig_username'   => trim($this->request->getPost('meta_ig_username') ?? '') ?: null,
+            'gemini_api_key'     => $geminiEnc,
         ];
 
         if (! $this->bisnisModel->update($id, $data)) {

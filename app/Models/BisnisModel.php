@@ -29,6 +29,12 @@ class BisnisModel extends Model
         'logo_url',
         'status',
         'urutan',
+        'meta_app_id',
+        'meta_app_secret',
+        'meta_access_token',
+        'meta_ig_account_id',
+        'meta_ig_username',
+        'gemini_api_key',
     ];
 
     protected $validationRules = [
